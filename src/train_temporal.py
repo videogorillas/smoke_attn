@@ -30,7 +30,7 @@ if __name__ == '__main__':
     #                            only_temporal=True)
 
     log_dir = os.path.join("./logs", os.path.basename(hdf))
-    m.fit_generator(train_seq, len(train_seq), epochs=10,
+    m.fit_generator(train_seq, len(train_seq), epochs=20,
                     use_multiprocessing=True, workers=5,
                     # validation_data=val_seq, validation_steps=len(val_seq),
                     verbose=1, callbacks=[TensorBoard(log_dir), ModelCheckpoint(hdf)],

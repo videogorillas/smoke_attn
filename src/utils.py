@@ -1,9 +1,14 @@
-import cv2
 import itertools
 
+import cv2
 
-def yield_frames(input_video_url: str):
+
+def yield_frames(input_video_url: str, start_msec: float = 0):
     cap = cv2.VideoCapture(input_video_url)
+
+    # cap.set(cv2.CAP_PROP_POS_FRAMES, 1)
+    cap.set(cv2.CAP_PROP_POS_MSEC, start_msec)
+
     try:
         fn_iter = itertools.count(start=0)
         while cap.isOpened():
