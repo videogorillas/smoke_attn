@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os
 import sys
-from random import shuffle
+from random import shuffle, randint
 
 import cv2
 import numpy as np
@@ -37,17 +37,19 @@ class BatchSeq(Sequence):
 class SmokeGifSequence(Sequence):
 
     def __init__(self, data_dir: str, neg_txt: str, pos_txt: str, input_shape_hwc: tuple, batch_size=16,
-                 show_data=False):
+                 show_data=False, only_temporal=False, only_spacial=False):
+        self.only_temporal = only_temporal
+        self.only_spacial = only_spacial
         self.batch_size = batch_size
 
         self.show = show_data
         self.input_shape_hwc = input_shape_hwc
         self.data_dir = data_dir
 
-        with open(neg_txt, 'r') as list_f:
+        with open(os.path.join(data_dir, neg_txt), 'r') as list_f:
             items = list(map(lambda l: [l.strip(), 0], list_f.readlines()))
 
-        with open(pos_txt, 'r') as list_f:
+        with open(os.path.join(data_dir, pos_txt), 'r') as list_f:
             p = list(map(lambda l: [l.strip(), 1], list_f.readlines()))
             items.extend(p)
 
@@ -57,7 +59,16 @@ class SmokeGifSequence(Sequence):
         self.len = int(len(self.file_and_clsid) / batch_size)
 
     def __getitem__(self, index):
-        return self.rgb_and_flows_batch(index)
+        xx, y_batch = self.rgb_and_flows_batch(index)
+        rgb = xx[0]
+        flow = xx[1]
+
+        if self.only_temporal:
+            return flow, y_batch
+        elif self.only_spacial:
+            return rgb, y_batch
+        else:
+            return xx, y_batch
 
     def __len__(self):
         return self.len
@@ -72,24 +83,40 @@ class SmokeGifSequence(Sequence):
         return hsv
 
     def rgb_and_flows(self, gif_file: str, flows_count: int = 10):
+        drop_first_n_frames = randint(0, 25 * 2)
         old_gray = None
         rgb = None
+        crop_x1 = randint(0, 32)
+        crop_x2 = randint(0, 32)
+        crop_y1 = randint(0, 32)
+        crop_y2 = randint(0, 32)
 
-        flows_mag_ang = np.zeros(shape=(flows_count, 2, 299, 299))
+        skip_n_frames = 2
+        flows_mag_ang = np.zeros(shape=(299, 299, flows_count * 2))
         for fn, bgr in yield_frames(gif_file):
+            h, w, c = bgr.shape
+            bgr = bgr[crop_y1:h - crop_y2, crop_x1:w - crop_x2]
+
             bgr = cv2.resize(bgr, dsize=self.input_shape_hwc[:2])
             gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
-            if fn > 0:
-                if fn < flows_count + 1:
+            if fn > drop_first_n_frames:
+                if fn % skip_n_frames != 0:
+                    continue
+
+                if fn < skip_n_frames * flows_count + 1:
+                    flow_frame = 2 * int(fn / skip_n_frames) - 2
+
                     flow = cv2.calcOpticalFlowFarneback(old_gray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
                     mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-                    flows_mag_ang[fn - 1, 0, :, :] = mag
-                    flows_mag_ang[fn - 1, 1, :, :] = ang
+                    flows_mag_ang[:, :, flow_frame] = mag
+                    flows_mag_ang[:, :, flow_frame + 1] = ang
+                    old_gray = gray
                 else:
                     break
-            old_gray = gray
+            else:
+                old_gray = gray
 
         return rgb, flows_mag_ang
 
@@ -108,7 +135,7 @@ class SmokeGifSequence(Sequence):
             xflow_batch.append(x_flows)
             y_batch[i][cls_id] = 1.
 
-        return xrgb_batch, xflow_batch, y_batch
+        return [np.array(xrgb_batch), np.array(xflow_batch)], y_batch
 
     def just_rgb_batch(self, index):
         s = index * self.batch_size
@@ -126,13 +153,12 @@ class SmokeGifSequence(Sequence):
 
 def test():
     data_dir = "/bstorage/datasets/smoking/gifs/"
-    seq = SmokeGifSequence(data_dir, neg_txt='train_neg.txt', pos_txt='train_pos.txt', input_shape_hwc=(299, 299, 3))
+    seq = SmokeGifSequence(data_dir, neg_txt='train_neg.txt', pos_txt='train_pos.txt', input_shape_hwc=(300, 299, 3))
     # bseq = BatchSeq(seq, batch_size=16)
 
     for i in range(len(seq)):
-        # [x_rgb, x_flows], y = seq[i][0]
+        # x_rgb_b, x_flows_b, y_b = seq[i]
         x_rgb_b, x_flows_b, y_b = seq[i]
-        xrgb_batch, xflow_batch, y_batch = seq[i]
 
         for j in range(len(x_rgb_b)):
             x_rgb, y = x_rgb_b[j], y_b[j]
@@ -145,7 +171,8 @@ def test():
             flow_mask = 255 - cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
             # cv2.imshow("%d rgb %s" % (j, y), bgr - flow_mask)
-            cv2.imshow("rgb+flow %d" % j, bgr - flow_mask)
+            # cv2.imshow("rgb+flow %d" % j, bgr - flow_mask)
+            cv2.imshow("rgb+flow %d" % j, cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR))
 
             c = cv2.waitKey(0)
             if c == 27:
