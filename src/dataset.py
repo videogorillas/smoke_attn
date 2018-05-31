@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import json
 import os
 import sys
 from random import shuffle, randint
@@ -83,7 +84,6 @@ class SmokeGifSequence(Sequence):
         return hsv
 
     def rgb_and_flows(self, gif_file: str, flows_count: int = 10):
-        drop_first_n_frames = randint(0, 25 * 2)
         old_gray = None
         rgb = None
         crop_x1 = randint(0, 32)
@@ -93,6 +93,22 @@ class SmokeGifSequence(Sequence):
 
         skip_n_frames = 2
         flows_mag_ang = np.zeros(shape=(299, 299, flows_count * 2))
+        json_lf = 'jsonl/' + gif_file + '/result.jsonl'
+        if os.path.isfile(json_lf):
+            with open(json_lf) as f:
+                jsonls = [json.loads(s.strip()) for s in f]
+            frame_number = len(jsonls)
+            class1_prob = np.array([x[1][1] for x in jsonls])
+            rand = np.random.uniform(0, 1, frame_number)
+            # find center frame, probably max of the sequence
+            center_frame_num = int(np.argmax(class1_prob * rand))
+            # check that first frame is > 0
+            drop_first_n_frames = max(1, center_frame_num - flows_count * skip_n_frames // 2)
+            # check that last frame is <= n
+            drop_first_n_frames += min(0, frame_number - center_frame_num - flows_count * skip_n_frames // 2)
+        else:
+            drop_first_n_frames = randint(0, 25 * 2)
+
         for fn, bgr in yield_frames(gif_file):
             h, w, c = bgr.shape
             bgr = bgr[crop_y1:h - crop_y2, crop_x1:w - crop_x2]
