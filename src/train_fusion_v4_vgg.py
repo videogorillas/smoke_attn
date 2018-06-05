@@ -1,10 +1,12 @@
 import os
 
 from keras import Input, Model
-from keras.applications.inception_v3 import InceptionV3
+from keras.activations import relu
+from keras.applications import VGG19
 from keras.backend import categorical_crossentropy
 from keras.callbacks import TensorBoard, ModelCheckpoint
-from keras.layers import Conv2D, concatenate, Dense, Flatten
+from keras.layers import Conv2D, Dense, Flatten, concatenate
+from keras.utils import plot_model
 
 from dataset import SmokeGifSequence
 
@@ -14,7 +16,11 @@ if __name__ == '__main__':
     input_image = Input((299, 299, 3))
     input_flow = Input((299, 299, 20))
 
-    fe = InceptionV3(include_top=False, input_tensor=input_image, pooling='avg')
+    # fe = InceptionV3(include_top=False, input_tensor=input_image)
+    fe = VGG19(include_top=False, input_tensor=input_image)
+    fe.summary()
+    plot_model(fe)
+
     for l in fe.layers:
         l.trainable = False
     x_rgb = fe.get_output_at(0)
@@ -26,17 +32,20 @@ if __name__ == '__main__':
     x_flow = Conv2D(8, 3, strides=2, activation='relu')(x_flow)
     x_flow = Conv2D(16, 3, strides=2, activation='relu')(x_flow)
     x_flow = Conv2D(16, 3, strides=2, activation='relu')(x_flow)
-    x_flow = Conv2D(16, 3, strides=2, activation='relu')(x_flow)
-    x_flow = Flatten()(x_flow)
+    x_flow = Conv2D(32, 3, strides=2, activation='relu')(x_flow)
+    # x_flow = Flatten()(x_flow)
 
     x = concatenate([x_rgb, x_flow])
-    # x = Flatten()(x)
-    x = Dense(2, activation="softmax")(x)
+    x = Conv2D(64, 3, activation=relu)(x)
+ 
+    x = Flatten()(x)
+    # x = Dense(1024, activation=relu)(x)
 
+    x = Dense(2, activation="softmax")(x)
     m = Model(inputs=[input_image, input_flow], outputs=x)
 
     # load_model(hdf)
-    hdf = "fusion_vg_smoke_v2.h5"
+    hdf = "fusion_vg_smoke_v3.1.h5"
     # m.load_weights(hdf)
     m.compile("adam", categorical_crossentropy, metrics=["accuracy"])
     # plot_model(m, show_shapes=True)
@@ -59,5 +68,5 @@ if __name__ == '__main__':
     m.fit_generator(train_seq, len(train_seq), epochs=20,
                     use_multiprocessing=True, workers=10,
                     validation_data=val_seq, validation_steps=42,
-                    verbose=1, callbacks=[TensorBoard(log_dir), ModelCheckpoint(hdf)],
+                    verbose=1, callbacks=[TensorBoard(log_dir), ModelCheckpoint(hdf, save_best_only=True)],
                     )

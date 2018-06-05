@@ -1,4 +1,3 @@
-import csv
 import json
 import sys
 
@@ -7,23 +6,7 @@ import matplotlib.pyplot as plt
 import numpy
 from sklearn.metrics import average_precision_score, precision_recall_curve
 
-from utils import yield_frames
-
-
-def truth_from_csv(truth_csv: str, num_classes: int = 2) -> list:
-    truth_by_frame = []
-    with open(truth_csv, 'r') as f:
-        reader = csv.reader(f)
-
-        for row in reader:
-            start_fn, end_fn, class_id = row
-            start_fn, end_fn, class_id = int(start_fn), int(end_fn), int(class_id)
-
-            for fn in range(start_fn, end_fn + 1):
-                y = numpy.zeros(shape=num_classes, dtype=numpy.float)
-                y[class_id] = 1.
-                truth_by_frame.append(y)
-    return truth_by_frame
+from utils import yield_frames, truth_from_csv
 
 
 def main():

@@ -7,10 +7,10 @@ from keras.models import load_model
 
 from dataset import yield_frames
 
-feature_params = dict(maxCorners=0,
-                      qualityLevel=0.2,
-                      minDistance=3,
-                      blockSize=2)
+lk_feature_params = dict(maxCorners=0,
+                         qualityLevel=0.2,
+                         minDistance=3,
+                         blockSize=2)
 lk_params = dict(winSize=(5, 5),
                  maxLevel=8,
                  criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
         bgr = cv2.resize(bgr, (420, 420))
         gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-        p0 = cv2.goodFeaturesToTrack(gray, **feature_params)
+        p0 = cv2.goodFeaturesToTrack(gray, **lk_feature_params)
         if p0 is None:
             p0 = []
 

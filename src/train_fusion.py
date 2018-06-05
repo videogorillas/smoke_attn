@@ -11,8 +11,6 @@ from dataset import SmokeGifSequence
 
 if __name__ == '__main__':
     input_shape = (299, 299, 3)
-    # hdf = "m1.h5"
-    hdf = "fusion_vg_smoke_v1.h5"
 
     input_image = Input((299, 299, 3))
     input_flow = Input((299, 299, 20))
@@ -32,8 +30,10 @@ if __name__ == '__main__':
 
     m = Model(inputs=[input_image, input_flow], outputs=x)
 
-    # load_model(hdf)
-    # m.load_weights(hdf)
+    # hdf = "m1.h5"
+    hdf = "fusion_vg_smoke_v1.h5"
+
+    m.load_weights(hdf)
     m.compile("adam", categorical_crossentropy, metrics=["accuracy"])
     # plot_model(m, show_shapes=True)
 
@@ -44,14 +44,16 @@ if __name__ == '__main__':
 
     train_seq = SmokeGifSequence(data_dir, neg_txt='negatives.txt', pos_txt='positives.txt',
                                  input_shape_hwc=input_shape)
-    # val_seq = SmokeGifSequence(data_dir, neg_txt='validate_neg.txt', pos_txt='validate_pos.txt',
-    #                            input_shape_hwc=input_shape,
-    #                            only_temporal=True)
-    # 
     log_dir = os.path.join("./logs", os.path.basename(hdf))
+
+    valid_data_dir = "/blender/storage/datasets/vg_smoke/valid/"
+    val_seq = SmokeGifSequence(valid_data_dir, neg_txt='validate.txt', pos_txt='validate.txt',
+                               input_shape_hwc=input_shape,
+                               batch_size=2,
+                               only_spacial=False, only_temporal=False)
 
     m.fit_generator(train_seq, len(train_seq), epochs=10,
                     use_multiprocessing=True, workers=5,
-                    # validation_data=val_seq, validation_steps=len(val_seq),
+                    validation_data=val_seq, validation_steps=42,
                     verbose=1, callbacks=[TensorBoard(log_dir), ModelCheckpoint(hdf)],
                     )
