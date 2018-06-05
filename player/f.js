@@ -1,4 +1,4 @@
-function loadPlayer(videoUrl, srtUrl) {
+function loadPlayer(pCont, videoUrl, srtUrl) {
     let pConfig = {
         hotkeys: true,
         playlist: false,
@@ -6,19 +6,10 @@ function loadPlayer(videoUrl, srtUrl) {
         theme: 'vg',
         plugins: ['filmstrip']
     };
-    let player = new VG.Player(pCont, pConfig);
+    let player = new PlayerImpl(pCont, pConfig);
 
     return new Promise((resolve, reject) => {
         player.loadUrl(videoUrl, (err) => {
-            // VG.Captions.parseSubs(player.getTimeline(), srtUrl, 'srt', (err, subs) => {
-            //     if (err) {
-            //         console.error("error parsing subs", err);
-            //         return;
-            //     }
-            //     console.log("SRT OK");
-            //     player.addCaptions(subs);
-            //     player.play();
-            // });
             if (err) {
                 reject(err);
             } else {
@@ -26,7 +17,6 @@ function loadPlayer(videoUrl, srtUrl) {
             }
         });
     });
-
 }
 
 
@@ -163,41 +153,40 @@ function drawBinBars(predByFrame, threshold) {
     });
 }
 
-loadPlayer(videoURL).then(player => {
+loadPlayer(pCont, videoURL).then(player => {
     window.player = player;
+
+    let filmCont = document.getElementById("filmCont");
     let totalClasses = 2;
     let labels = ["NO SMOKING", "SMOKING"];
     window.yByFrame = [];
+
+
+    var strip = document.createElement("canvas");
+    strip.height = 142;
+    strip.width = 820;
+    filmCont.appendChild(strip);
+
+    window.player.getStaticFilmStripDrawer(videoURL,
+        function (drawer) {
+            window.drawer = drawer;
+            drawer.drawFilmstrip(strip, 0, 9, 10, true, () => {
+                // done
+                console.log("done");
+            }, (err) => {
+                console.error(err);
+                // err
+            });
+        }
+    );
+
     fetchJSONL(jsonlUrl).then(yByFrame => {
         console.log(jsonlUrl);
         window.yByFrame = yByFrame;
-        drawChart(yByFrame);
-        // drawBinBars(yByFrame, 0.8);
+
+
     }).catch(reason => {
         console.error(reason);
-    });
-
-    // let timebox = document.querySelector(".vg_time_controls_box");
-    // clsBox.setAttribute("class", "vg_aligner vg_info");
-    // timebox.appendChild(clsBox);
-
-    var clsBox = document.getElementById("clsLabel");
-    clsBox.addEventListener("click", ev => {
-        let fn = window.player.getCurrentFrame();
-
-        var clsId = parseInt(clsBox.getAttribute("clsId"));
-        clsId = clsId + 1;
-        if (clsId > totalClasses - 1) {
-            clsId = 0;
-        }
-        window.yByFrame[fn] = [fn, [0, 0]];
-        window.yByFrame[fn][1][clsId] = 1.0;
-
-        clsBox.setAttribute("clsId", clsId);
-        clsBox.setAttribute("acc", "1.0");
-        clsBox.setAttribute("fn", fn);
-        updateLabel(clsBox, labels);
-        drawChart(yByFrame);
     });
 
 
