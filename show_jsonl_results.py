@@ -2,6 +2,7 @@ import itertools
 import json
 import os
 import sys
+from os.path import basename
 from shutil import move
 
 import cv2
@@ -24,7 +25,6 @@ def validate_results(video_f, y_by_fn):
     prev_gray = None
     prev_desc = None
     prev_kpts = None
-
     while cap.isOpened():
         fn = next(frame_counter)
 
@@ -57,19 +57,20 @@ def validate_results(video_f, y_by_fn):
         cls_acc = y[1][cls_id]
 
         threshold = 0.9
+        title = "%s" % basename(video_f)
         if cls_id == 1 and cls_acc > threshold:
             cv2.putText(bgr, "fn%05d %s" % (fn, "(1) smoke? %03f" % cls_acc),
                         (42, 42), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
-            cv2.imshow("frame", bgr)
+            cv2.imshow(title, bgr)
 
         elif cls_id == 0 and cls_acc > threshold:
             cv2.putText(bgr, "fn%05d %s" % (fn, "(0) NO smoke? %03f" % cls_acc),
                         (42, 42), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 2)
-            cv2.imshow("frame", bgr)
+            cv2.imshow(title, bgr)
         else:
             cv2.putText(bgr, "fn%05d %s" % (fn, "(%d) drop %03f" % (cls_id, cls_acc)),
                         (42, 42), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-            cv2.imshow("frame", bgr)
+            cv2.imshow(title, bgr)
 
         code = cv2.waitKey(25)
         if code == 27:
@@ -78,7 +79,7 @@ def validate_results(video_f, y_by_fn):
         elif code == 32:
             cls_id = read_cls_id()
 
-        if len(good) < 20:
+        if len(good) < 20 or fn == 0:
             prev_gray = gray
 
             cv2.putText(bgr, "CUT. Press 'n' to continue",
@@ -87,14 +88,14 @@ def validate_results(video_f, y_by_fn):
                         (42, 162), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
             cv2.putText(bgr, "CUT. Press 'n' to continue",
                         (42, 182), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
-            cv2.imshow("frame", bgr)
+            cv2.imshow(title, bgr)
 
             code = -1
             while code != 110:
                 code = cv2.waitKey(0)
             cv2.putText(bgr, "WIN! WIN! WIN!", (22, 240),
                         cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 3)
-            cv2.imshow("frame", bgr)
+            cv2.imshow(title, bgr)
 
         if len(good) < 20 or prev_clsid != cls_id or cls_acc < threshold - 0.1:
             cls_id = read_cls_id()
@@ -117,9 +118,20 @@ def read_cls_id():
 
 
 def good_matches(desc, prev_desc, matcher):
+    if desc is None:
+        return []
+    if prev_desc is None:
+        return []
+
     nn_matches = matcher.knnMatch(prev_desc, desc, k=2)
+    if nn_matches is None:
+        nn_matches = []
+
     good = []
-    for m, n in nn_matches:
+    for m_n in nn_matches:
+        if len(m_n) != 2:
+            continue
+        m, n = m_n
         ratio = 0.7
         if m.distance < ratio * n.distance:
             good.append([m])
@@ -145,7 +157,7 @@ def validate_single(machine_json, human_json, video_f):
 
 def main():
     vg_smoke_dir = '/Volumes/bstorage/datasets/vg_smoke/'
-    with open('%s/smoking_scenes.list' % vg_smoke_dir, 'r') as _f:
+    with open('%s/positives.txt' % vg_smoke_dir, 'r') as _f:
         for mp4 in _f.readlines():
             mp4 = mp4.strip()
             video_f = os.path.join(vg_smoke_dir, mp4)
