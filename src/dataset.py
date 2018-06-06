@@ -193,17 +193,16 @@ class SmokeGifSequence(Sequence):
 
 
 def test():
-    data_dir = "/blender/storage/datasets/vg_smoke/"
-    seq = SmokeGifSequence(data_dir, neg_txt='validate.txt', pos_txt='validate.txt',
-                           input_shape_hwc=(300, 600, 3),
-                           batch_size=2,
-                           only_spacial=False, only_temporal=False)
-
-    # data_dir = "/bstorage/datasets/smoking/gifs/"
-    # data_dir = "/blender/storage/datasets/vg_smoke"
-    # seq = SmokeGifSequence(data_dir, neg_txt='negatives.txt', pos_txt='positives.txt',
+    # data_dir = "/blender/storage/datasets/vg_smoke/"
+    # seq = SmokeGifSequence(data_dir, neg_txt='validate.txt', pos_txt='validate.txt',
     #                        input_shape_hwc=(300, 600, 3),
+    #                        batch_size=2,
     #                        only_spacial=False, only_temporal=False)
+
+    data_dir = "/blender/storage/datasets/vg_smoke"
+    seq = SmokeGifSequence(data_dir, neg_txt='negatives.txt', pos_txt='positives.txt',
+                           input_shape_hwc=(300, 600, 3),
+                           only_spacial=False, only_temporal=False)
 
     for i in range(len(seq)):
         print("i=%d" % i)

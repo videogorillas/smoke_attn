@@ -106,6 +106,7 @@ def validate_results(video_f, y_by_fn):
         print("fn: %d; akaze=%d; %s" % (fn, len(good), y))
         yield y
     cap.release()
+    cv2.destroyAllWindows()
 
 
 def read_cls_id():
@@ -157,7 +158,7 @@ def validate_single(machine_json, human_json, video_f):
 
 def main():
     vg_smoke_dir = '/Volumes/bstorage/datasets/vg_smoke/'
-    with open('%s/positives.txt' % vg_smoke_dir, 'r') as _f:
+    with open('%s/validate.txt' % vg_smoke_dir, 'r') as _f:
         for mp4 in _f.readlines():
             mp4 = mp4.strip()
             video_f = os.path.join(vg_smoke_dir, mp4)
