@@ -162,21 +162,26 @@ loadPlayer(pCont, videoURL).then(player => {
     window.yByFrame = [];
 
 
-    var strip = document.createElement("canvas");
-    strip.height = 142;
-    strip.width = 820;
-    filmCont.appendChild(strip);
-
     window.player.getStaticFilmStripDrawer(videoURL,
         function (drawer) {
             window.drawer = drawer;
-            drawer.drawFilmstrip(strip, 0, 9, 10, true, () => {
-                // done
-                console.log("done");
-            }, (err) => {
-                console.error(err);
-                // err
-            });
+
+
+            for (let i = 0; i < 100; i++) {
+
+
+                var strip = document.createElement("canvas");
+                strip.height = 62;
+                strip.width = 62 * 1.77 * 10;
+                filmCont.appendChild(strip);
+                drawer.drawFilmstrip(strip, i*10, i*10 + 10, 10, true, () => {
+                    // done
+                    console.log("done");
+                }, (err) => {
+                    console.error(err);
+                    // err
+                });
+            }
         }
     );
 
