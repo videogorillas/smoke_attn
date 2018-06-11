@@ -48,7 +48,7 @@ def validate_results(video_f, y_by_fn):
         im3 = cv2.drawMatchesKnn(gray, kpts, prev_gray, prev_kpts, good[:20], None,
                                  matchColor=None, matchesMask=None,
                                  flags=2)
-        cv2.imshow("matches", im3)
+        # cv2.imshow("matches", im3)
         prev_kpts = kpts
         prev_desc = desc
 
@@ -60,16 +60,16 @@ def validate_results(video_f, y_by_fn):
         title = "%s" % basename(video_f)
         if cls_id == 1 and cls_acc > threshold:
             cv2.putText(bgr, "fn%05d %s" % (fn, "(1) smoke? %03f" % cls_acc),
-                        (42, 42), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
+                        (42, 42), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 2)
             cv2.imshow(title, bgr)
 
         elif cls_id == 0 and cls_acc > threshold:
             cv2.putText(bgr, "fn%05d %s" % (fn, "(0) NO smoke? %03f" % cls_acc),
-                        (42, 42), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 2)
+                        (42, 42), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 2)
             cv2.imshow(title, bgr)
         else:
             cv2.putText(bgr, "fn%05d %s" % (fn, "(%d) drop %03f" % (cls_id, cls_acc)),
-                        (42, 42), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
+                        (42, 42), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 2)
             cv2.imshow(title, bgr)
 
         code = cv2.waitKey(25)
@@ -83,11 +83,11 @@ def validate_results(video_f, y_by_fn):
             prev_gray = gray
 
             cv2.putText(bgr, "CUT. Press 'n' to continue",
-                        (42, 142), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
+                        (42, 142), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 2)
             cv2.putText(bgr, "CUT. Press 'n' to continue",
-                        (42, 162), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
+                        (42, 162), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 255), 2)
             cv2.putText(bgr, "CUT. Press 'n' to continue",
-                        (42, 182), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
+                        (42, 182), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 2)
             cv2.imshow(title, bgr)
 
             code = -1
@@ -158,7 +158,7 @@ def validate_single(machine_json, human_json, video_f):
 
 def main():
     vg_smoke_dir = '/Volumes/bstorage/datasets/vg_smoke/'
-    with open('%s/validate.txt' % vg_smoke_dir, 'r') as _f:
+    with open('%s/smoking_scenes.txt' % vg_smoke_dir, 'r') as _f:
         for mp4 in _f.readlines():
             mp4 = mp4.strip()
             video_f = os.path.join(vg_smoke_dir, mp4)

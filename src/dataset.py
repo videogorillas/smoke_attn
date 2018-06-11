@@ -131,12 +131,12 @@ class SmokeGifSequence(Sequence):
 
         return rgb, flows_mag_ang
 
-    def best_frame_for_cls_id(self, drop_every_n_frame, flows_count, json_lf):
+    def best_frame_for_cls_id(self, cls_id: int, drop_every_n_frame, flows_count, json_lf):
         with open(json_lf) as f:
             predictions_by_frame = [json.loads(s.strip()) for s in f]
 
         total_frames = len(predictions_by_frame)
-        class1_prob = np.array([x[1][1] for x in predictions_by_frame])
+        class1_prob = np.array([x[1][cls_id] for x in predictions_by_frame])
         rand = np.random.uniform(0, 1, total_frames)
         # find center frame, probably max of the sequence
         center_frame_num = int(np.argmax(class1_prob * rand))
@@ -163,20 +163,18 @@ class SmokeGifSequence(Sequence):
 
             drop_every_n_frame = 2
             drop_first_n_frames = -1
+            
+            human_y = os.path.join(self.data_dir, "jsonl.byhuman", gif, 'result.jsonl')
+            machine_y = os.path.join(self.data_dir, "jsonl", gif, 'result.jsonl')
 
-            if cls_id == 1 and True:
-                human_y = os.path.join(self.data_dir, "jsonl.byhuman", gif, 'result.jsonl')
-                machine_y = os.path.join(self.data_dir, "jsonl", gif, 'result.jsonl')
+            if os.path.isfile(human_y):
+                drop_first_n_frames = self.best_frame_for_cls_id(cls_id, drop_every_n_frame, flows_count, human_y)
 
-                if os.path.isfile(human_y):
-                    drop_first_n_frames = self.best_frame_for_cls_id(drop_every_n_frame, flows_count, human_y)
-                elif os.path.isfile(machine_y):
-                    # print("JSONL best frame is %d : %start_index" % (drop_first_n_frames, gif))
-                    drop_first_n_frames = self.best_frame_for_cls_id(drop_every_n_frame, flows_count, machine_y)
-
-            # cap = cv2.VideoCapture(video_path)
-            # frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-            # cap.release()
+            elif os.path.isfile(machine_y):
+                # print("JSONL best frame is %d : %start_index" % (drop_first_n_frames, gif))
+                drop_first_n_frames = self.best_frame_for_cls_id(cls_id, drop_every_n_frame, flows_count, machine_y)
+            else:
+                raise Exception("Oooops. No JSONL")
 
             # print("video_path=%s; start_frame=%d; total_frames=%d" % (video_path, drop_first_n_frames, frame_count))
             x_rgb, x_flows = self.rgb_and_flows(video_path,
@@ -228,7 +226,7 @@ def test():
             # cv2.imshow("bgr", bgr)
             cls_id = np.argmax(y)
             cv2.imshow("frame %d" % cls_id, bgr)
-            cv2.imshow("flow %d" % cls_id, flow_mask)
+            # cv2.imshow("flow %d" % cls_id, flow_mask)
 
             c = cv2.waitKey(0)
             if c == 27:
