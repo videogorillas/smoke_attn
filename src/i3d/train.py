@@ -6,8 +6,8 @@ from keras.layers import Dense, concatenate
 from keras.losses import binary_crossentropy
 from keras.optimizers import Adam
 
-from i3d_dataset import I3DFusionSequence
-from i3d_inception import Inception_Inflated3d
+from i3d.i3d_dataset import I3DFusionSequence
+from i3d.i3d_inception import Inception_Inflated3d
 
 if __name__ == '__main__':
     NUM_FRAMES = 64
@@ -37,6 +37,7 @@ if __name__ == '__main__':
         classes=NUM_CLASSES)
     for l in flow_model.layers:
         l.trainable = False
+        l.name = "flow-" + l.name
     flow_y = flow_model.get_output_at(0)
 
     y = concatenate([rgb_y, flow_y])
