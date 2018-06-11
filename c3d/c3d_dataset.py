@@ -10,8 +10,8 @@ import numpy
 from keras.utils import Sequence, get_file
 from numpy import argmax
 
-from c3d import augmentation
-from c3d.sports1M_utils import C3D_MEAN_PATH
+import augmentation
+from sports1M_utils import C3D_MEAN_PATH
 
 
 class C3DSequence(Sequence):

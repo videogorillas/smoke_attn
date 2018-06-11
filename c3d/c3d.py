@@ -9,7 +9,6 @@ Based on code from @albertomontesg
 """
 
 import keras.backend as K
-import skvideo.io
 from keras.layers.convolutional import Conv3D, MaxPooling3D, ZeroPadding3D
 from keras.layers.core import Dense, Dropout, Flatten
 from keras.models import Sequential
@@ -77,24 +76,24 @@ def C3D(weights='sports1M'):
 
     return model
 
-
-if __name__ == '__main__':
-    model = C3D(weights='sports1M')
-
-    vid_path = '/blender/storage/datasets/football/test_videos/output2.mp4'
-    v = skvideo.io.vread(vid_path)
-
-    vid = v[40:56]
-    vid = preprocess_input(vid)
-    preds = model.predict(vid)
-    print(decode_predictions(preds))
-
-    vid = v[0:16]
-    vid = preprocess_input(vid)
-    preds = model.predict(vid)
-    print(decode_predictions(preds))
-
-    vid = v[100:116]
-    vid = preprocess_input(vid)
-    preds = model.predict(vid)
-    print(decode_predictions(preds))
+# 
+# if __name__ == '__main__':
+#     model = C3D(weights='sports1M')
+# 
+#     vid_path = '/blender/storage/datasets/football/test_videos/output2.mp4'
+#     v = skvideo.io.vread(vid_path)
+# 
+#     vid = v[40:56]
+#     vid = preprocess_input(vid)
+#     preds = model.predict(vid)
+#     print(decode_predictions(preds))
+# 
+#     vid = v[0:16]
+#     vid = preprocess_input(vid)
+#     preds = model.predict(vid)
+#     print(decode_predictions(preds))
+# 
+#     vid = v[100:116]
+#     vid = preprocess_input(vid)
+#     preds = model.predict(vid)
+#     print(decode_predictions(preds))
