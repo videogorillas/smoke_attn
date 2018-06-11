@@ -2,6 +2,7 @@
 import json
 import os
 import sys
+from cv2 import DualTVL1OpticalFlow_create as DualTVL1
 from random import shuffle, randint
 
 import cv2
@@ -9,6 +10,8 @@ import numpy as np
 from keras.utils import Sequence
 
 from utils import yield_frames
+
+TVL1 = DualTVL1()
 
 
 class BatchSeq(Sequence):
@@ -33,6 +36,22 @@ class BatchSeq(Sequence):
 
     def __len__(self):
         return self.len
+
+
+def calc_flow(gray, prev):
+    curr_flow = TVL1.calc(prev, gray, None)
+    curr_flow[curr_flow >= 20] = 20
+    curr_flow[curr_flow <= -20] = -20
+    # scale to [-1, 1]
+    max_val_f = lambda x: max(max(x.flatten()), abs(min(x.flatten())))
+    max_val = max_val_f(curr_flow)
+
+    if max_val == 0:
+        return curr_flow
+    else:
+        curr_flow = curr_flow / max_val
+
+    return curr_flow
 
 
 class SmokeGifSequence(Sequence):
@@ -119,10 +138,16 @@ class SmokeGifSequence(Sequence):
             if fn < end_frame:
                 flow_frame = 2 * int(fn / drop_every_n_frame) - 2
 
-                flow = cv2.calcOpticalFlowFarneback(old_gray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-                mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-                flows_mag_ang[:, :, flow_frame] = mag
-                flows_mag_ang[:, :, flow_frame + 1] = ang
+                curr_flow = calc_flow(gray, old_gray)
+                # print(curr_flow.shape)
+
+                # flow = cv2.calcOpticalFlowFarneback(old_gray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+                # mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+                # flows_mag_ang[:, :, flow_frame] = mag
+                # flows_mag_ang[:, :, flow_frame + 1] = ang
+
+                flows_mag_ang[:, :, flow_frame] = curr_flow[:, :, 0]
+                flows_mag_ang[:, :, flow_frame + 1] = curr_flow[:, :, 1]
                 old_gray = gray
             else:
                 break
@@ -163,7 +188,7 @@ class SmokeGifSequence(Sequence):
 
             drop_every_n_frame = 2
             drop_first_n_frames = -1
-            
+
             human_y = os.path.join(self.data_dir, "jsonl.byhuman", gif, 'result.jsonl')
             machine_y = os.path.join(self.data_dir, "jsonl", gif, 'result.jsonl')
 

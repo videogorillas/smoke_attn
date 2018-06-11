@@ -24,7 +24,8 @@ precision: 0.672103, recall:0.672103 inception_v3-_288_512_3.h5-basic.mp4.jsonl/
 ## Fusion
 
 train_fusion_v3
-??
+Epoch 10/10
+19/19 [==============================] - 174s 9s/step - loss: 0.6891 - val_loss: 0.7815
 
 
 thresh 0.8;

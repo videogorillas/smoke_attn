@@ -6,7 +6,7 @@ from keras.applications import MobileNet
 from keras.backend import categorical_crossentropy
 from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.layers import concatenate, Dense
-from keras.optimizers import SGD
+from keras.optimizers import Adam
 
 from dataset import SmokeGifSequence
 
@@ -35,9 +35,9 @@ if __name__ == '__main__':
     m = Model(inputs=[input_image, input_flow], outputs=x)
 
     # load_model(hdf)
-    hdf = "fusion_vg_smoke_mobilenet_v2.1.h5"
+    hdf = "fusion_vg_smoke_mobilenet_v2.4.h5"
     # m.load_weights(hdf)
-    m.compile(SGD(1e-4), categorical_crossentropy, metrics=["accuracy"])
+    m.compile(Adam(1e-4), categorical_crossentropy, metrics=["accuracy"])
     # plot_model(m, show_shapes=True)
 
     m.summary()
