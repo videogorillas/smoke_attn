@@ -19,7 +19,7 @@ from keras.losses import binary_crossentropy
 from keras.optimizers import SGD
 from keras.utils.data_utils import get_file
 
-from c3d_dataset import C3DSequence
+from c3d.c3d_dataset import C3DSequence
 
 WEIGHTS_PATH = 'https://github.com/adamcasson/c3d/releases/download/v0.1/sports1M_weights_tf.h5'
 

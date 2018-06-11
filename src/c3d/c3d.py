@@ -15,7 +15,7 @@ from keras.layers.core import Dense, Dropout, Flatten
 from keras.models import Sequential
 from keras.utils.data_utils import get_file
 
-from sports1M_utils import preprocess_input, decode_predictions
+from c3d.sports1M_utils import preprocess_input, decode_predictions
 
 WEIGHTS_PATH = 'https://github.com/adamcasson/c3d/releases/download/v0.1/sports1M_weights_tf.h5'
 
