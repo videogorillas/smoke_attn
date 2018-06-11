@@ -6,11 +6,11 @@ from keras.layers import Dense, concatenate
 from keras.losses import binary_crossentropy
 from keras.optimizers import Adam
 
-from i3d.i3d_dataset import I3DFusionSequence
-from i3d.i3d_inception import Inception_Inflated3d
+from i3d_dataset import I3DFusionSequence
+from i3d_inception import Inception_Inflated3d
 
 if __name__ == '__main__':
-    NUM_FRAMES = 64
+    NUM_FRAMES = 16
     FRAME_HEIGHT = 224
     FRAME_WIDTH = 224
     NUM_RGB_CHANNELS = 3
