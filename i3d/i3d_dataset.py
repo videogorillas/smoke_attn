@@ -93,7 +93,7 @@ class I3DFusionSequence(Sequence):
             xflow_batch[i, :, :, :, :] = xflow
             ybatch[i, :] = y
 
-        return (xrgb_batch, xflow_batch), ybatch
+        return [xrgb_batch, xflow_batch], ybatch
 
     def get_one_xy(self, index):
         if self.image_augmentation:
