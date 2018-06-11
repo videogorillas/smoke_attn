@@ -81,13 +81,14 @@ class I3DFusionSequence(Sequence):
 
     def __getitem__(self, index):
         s = index * self.batch_size
-        # e = min(len(self.all_seq), s + self.batch_size)
+        e = min(len(self.all_seq), s + self.batch_size)
 
         xrgb_batch = numpy.zeros(shape=(self.batch_size, self.num_frames, self.input_hw[0], self.input_hw[1], 3))
         xflow_batch = numpy.zeros(shape=(self.batch_size, self.num_frames, self.input_hw[0], self.input_hw[1], 2))
         ybatch = numpy.zeros(shape=(self.batch_size, 2))
-        for i in range(self.batch_size):
-            xrgb, xflow, y = self.get_one_xy(i)
+        for ii in range(s, e):
+            i = ii - s
+            xrgb, xflow, y = self.get_one_xy(ii)
             xrgb_batch[i, :, :, :, :] = xrgb
             xflow_batch[i, :, :, :, :] = xflow
             ybatch[i, :] = y
@@ -137,7 +138,7 @@ class I3DFusionSequence(Sequence):
 
             if self.show:
                 print(video_path)
-                cv2.imshow("f%d" % cls_id, cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+                cv2.imshow("%d f%d" % (fn + start_frame, cls_id), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
                 cv2.waitKey(25)
 
             rgb = rgb / 127.5 - 1

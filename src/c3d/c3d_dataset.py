@@ -10,8 +10,8 @@ import numpy
 from keras.utils import Sequence, get_file
 from numpy import argmax
 
-import augmentation
-from sports1M_utils import C3D_MEAN_PATH
+from c3d import augmentation
+from c3d.sports1M_utils import C3D_MEAN_PATH
 
 
 class C3DSequence(Sequence):
@@ -72,8 +72,9 @@ class C3DSequence(Sequence):
 
         xbatch = numpy.zeros(shape=(self.batch_size, 16, 112, 112, 3))
         ybatch = numpy.zeros(shape=(self.batch_size, 2))
-        for i in range(self.batch_size):
-            x, y = self.get_one_xy(i)
+        for ii in range(s, e):
+            i = ii - s
+            x, y = self.get_one_xy(ii)
             xbatch[i, :, :, :, :] = x
             ybatch[i, :] = y
 
