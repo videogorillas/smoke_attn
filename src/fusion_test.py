@@ -9,7 +9,7 @@ from keras.applications import mobilenet
 from keras.models import load_model
 from keras.utils import CustomObjectScope
 
-from dataset import SmokeGifSequence
+from dataset import SmokeGifSequence, calc_flow
 from utils import yield_frames
 
 
@@ -43,10 +43,9 @@ def yield_predictions(m, video_file, show=False):
                 x_flow_new[:, :, :-2] = x_flow[:, :, 2:]  # shift oflow left by two positions
                 x_flow = x_flow_new
 
-            flow = cv2.calcOpticalFlowFarneback(old_gray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-            mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-            x_flow[:, :, flow_fn] = mag
-            x_flow[:, :, flow_fn + 1] = ang
+            cur_flow = calc_flow(gray, old_gray)
+            x_flow[:, :, flow_fn] = cur_flow[:, :, 0]
+            x_flow[:, :, flow_fn + 1] = cur_flow[:, :, 1]
             old_gray = gray
 
             flow_fn = flow_fn + 2

@@ -2,7 +2,7 @@
 import json
 import os
 import sys
-from cv2 import DualTVL1OpticalFlow_create as DualTVL1
+from cv2 import DualTVL1OpticalFlow
 from random import shuffle, randint
 
 import cv2
@@ -11,7 +11,8 @@ from keras.utils import Sequence
 
 from utils import yield_frames
 
-TVL1 = DualTVL1()
+# TVL1: DualTVL1OpticalFlow = cv2.DualTVL1OpticalFlow_create(warps=3)
+TVL1: DualTVL1OpticalFlow = cv2.DualTVL1OpticalFlow_create()
 
 
 class BatchSeq(Sequence):
@@ -39,7 +40,10 @@ class BatchSeq(Sequence):
 
 
 def calc_flow(gray, prev):
-    curr_flow = TVL1.calc(prev, gray, None)
+    curr_flow = cv2.calcOpticalFlowFarneback(prev, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+    # curr_flow = TVL1.calc(prev, gray, None)
+
+    # curr_flow = cv2.cartToPolar(flow[..., 0], flow[..., 1])
     curr_flow[curr_flow >= 20] = 20
     curr_flow[curr_flow <= -20] = -20
     # scale to [-1, 1]
@@ -139,12 +143,6 @@ class SmokeGifSequence(Sequence):
                 flow_frame = 2 * int(fn / drop_every_n_frame) - 2
 
                 curr_flow = calc_flow(gray, old_gray)
-                # print(curr_flow.shape)
-
-                # flow = cv2.calcOpticalFlowFarneback(old_gray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-                # mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-                # flows_mag_ang[:, :, flow_frame] = mag
-                # flows_mag_ang[:, :, flow_frame + 1] = ang
 
                 flows_mag_ang[:, :, flow_frame] = curr_flow[:, :, 0]
                 flows_mag_ang[:, :, flow_frame + 1] = curr_flow[:, :, 1]
@@ -186,7 +184,7 @@ class SmokeGifSequence(Sequence):
             gif, cls_id = self.file_and_clsid[start_index + i]
             video_path = os.path.join(self.data_dir, gif)
 
-            drop_every_n_frame = 2
+            drop_every_n_frame = 1
             drop_first_n_frames = -1
 
             human_y = os.path.join(self.data_dir, "jsonl.byhuman", gif, 'result.jsonl')
@@ -251,7 +249,7 @@ def test():
             # cv2.imshow("bgr", bgr)
             cls_id = np.argmax(y)
             cv2.imshow("frame %d" % cls_id, bgr)
-            # cv2.imshow("flow %d" % cls_id, flow_mask)
+            cv2.imshow("flow %d" % cls_id, flow_mask)
 
             c = cv2.waitKey(0)
             if c == 27:

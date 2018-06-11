@@ -31,3 +31,7 @@ Epoch 10/10
 thresh 0.8;
 precision: 0.599776, recall:0.460515 basic-crop fusion_vg_smoke_v3.2.h5
 
+
+normalized opticalflow; fusion_vg_smoke_mobilenet_v2.4.h5
+0.8 precision: 0.718078, recall:0.243777 
+0.5 precision: 0.624893, recall:0.624893 (edited)
