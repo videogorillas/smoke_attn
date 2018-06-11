@@ -2,7 +2,7 @@ import os
 
 from keras import Model, Input
 from keras.callbacks import TensorBoard, ModelCheckpoint
-from keras.layers import Dense, concatenate
+from keras.layers import Dense, concatenate, Flatten
 from keras.losses import binary_crossentropy
 from keras.optimizers import Adam
 
@@ -41,6 +41,7 @@ if __name__ == '__main__':
     flow_y = flow_model.get_output_at(0)
 
     y = concatenate([rgb_y, flow_y])
+    y = Flatten()(y)
     y = Dense(2, activation="softmax", name="fc9")(y)
     model = Model(inputs=[rgb_input, flow_input], outputs=y)
 
