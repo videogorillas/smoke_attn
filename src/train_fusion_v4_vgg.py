@@ -2,7 +2,7 @@ import os
 
 from keras import Input, Model
 from keras.activations import relu
-from keras.applications import VGG19
+from keras.applications import VGG19, VGG16
 from keras.backend import categorical_crossentropy
 from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.layers import Conv2D, Dense, Flatten, concatenate
@@ -17,9 +17,9 @@ if __name__ == '__main__':
     input_flow = Input((299, 299, 20))
 
     # fe = InceptionV3(include_top=False, input_tensor=input_image)
-    fe = VGG19(include_top=False, input_tensor=input_image)
+    fe = VGG16(include_top=False, input_tensor=input_image)
     fe.summary()
-    plot_model(fe)
+    # plot_model(fe)
 
     for l in fe.layers:
         l.trainable = False

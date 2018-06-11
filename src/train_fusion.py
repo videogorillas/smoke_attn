@@ -7,7 +7,7 @@ from keras.applications.inception_v3 import InceptionV3
 from keras.backend import categorical_crossentropy
 from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.layers import Conv2D, concatenate, Dense, Flatten
-from keras.optimizers import SGD
+from keras.optimizers import SGD, Adam
 
 from dataset import SmokeGifSequence
 
@@ -19,8 +19,8 @@ if __name__ == '__main__':
 
     fe = InceptionV3(include_top=False, input_tensor=input_image)
     for l in fe.layers:
-        if "mixed9" == l.name:
-            break
+        # if "mixed9" == l.name:
+        #     break
 
         l.trainable = False
 
@@ -42,8 +42,8 @@ if __name__ == '__main__':
     hdf = "fusion_vg_smoke_v1.h5"
     m.load_weights(hdf)
 
-    m.compile(SGD(lr=1e-4), categorical_crossentropy, metrics=["accuracy"])
-    # m.compile("adam", categorical_crossentropy, metrics=["accuracy"])
+    # m.compile(SGD(lr=1e-4), categorical_crossentropy, metrics=["accuracy"])
+    m.compile(Adam(), categorical_crossentropy, metrics=["accuracy"])
     # plot_model(m, show_shapes=True)
 
     m.summary()

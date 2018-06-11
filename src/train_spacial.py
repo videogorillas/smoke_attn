@@ -11,7 +11,7 @@ from dataset import SmokeGifSequence
 if __name__ == '__main__':
     input_shape = (299, 299, 3)
 
-    hdf = "vg_smoke_spacial_v1.1.h5"
+    hdf = "vg_smoke_spacial_v1.2.h5"
     feature_extractor = InceptionV3(input_shape=input_shape, include_top=False, pooling='avg')
     for l in feature_extractor.layers[:]:
         # if "mixed9" == l.name:

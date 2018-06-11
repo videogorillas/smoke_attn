@@ -2,6 +2,7 @@
 ## Spacial
 
 **precision: 0.702740, recall:0.440343; /inception_v3.h5-basic-cropped.mp4.jsonl/result.jsonl**
+
 precision: 0.724624, recall:0.330901; /inception_v3-_288_512_3.h5-basic-cropped.mp4.jsonl/result.jsonl
 precision: 0.616613, recall:0.414163; /inception_v3_500_500_3.h5-basic-cropped.mp4.jsonl/result.jsonl
 
@@ -21,6 +22,10 @@ thresh=0.5
 precision: 0.672103, recall:0.672103 inception_v3-_288_512_3.h5-basic.mp4.jsonl/result.jsonl
 
 ## Fusion
+
+train_fusion_v3
+??
+
 
 thresh 0.8;
 precision: 0.599776, recall:0.460515 basic-crop fusion_vg_smoke_v3.2.h5

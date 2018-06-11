@@ -1,3 +1,7 @@
+import argparse
+import json
+import logging
+
 import cv2
 import numpy
 from keras import Input
@@ -9,7 +13,7 @@ from dataset import SmokeGifSequence
 from utils import yield_frames
 
 
-def yield_predictions(m, video_file):
+def yield_predictions(m, video_file, show=False):
     input_shape = (299, 299, 3)
     input_image = Input((299, 299, 3))
     input_flow = Input((299, 299, 20))
@@ -52,7 +56,7 @@ def yield_predictions(m, video_file):
         y_batch = m.predict(xx, batch_size=1)
         for y in y_batch:
             yield (fn, y)
-            show = False
+
             if show:
                 cls_id = numpy.argmax(y)
                 print("fn=%d; flow_frame=%d cls_id=%d y=%s" % (fn, flow_fn, cls_id, y.round(2)))
@@ -68,14 +72,23 @@ def yield_predictions(m, video_file):
 
 
 if __name__ == '__main__':
-    # hdf = "fusion_vg_smoke_v2.h5"
-    # hdf = "/blender/storage/home/chexov/smoke_attn/fusion_vg_smoke_v1.h5"
-    # hdf = "/blender/storage/home/chexov/smoke_attn/fusion_vg_smoke_v2.h5"
-    # hdf = "/blender/storage/home/chexov/smoke_attn/fusion_vg_smoke_v3.h5"
-    hdf = "/blender/storage/home/chexov/smoke_attn/fusion_vg_smoke_v3.1.h5"
-    with CustomObjectScope({'relu6': mobilenet.relu6, 'DepthwiseConv2D': mobilenet.DepthwiseConv2D}):
-        m = load_model(hdf)
+    logging.basicConfig()
 
-    video_file = "/Volumes/SD128/testvideo/smoke_scene_in_the_movies.mp4"
-    for fn, y in yield_predictions(m, video_file):
-        print(fn, y)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('hdf', type=str)
+    parser.add_argument('video', type=str)
+    args = parser.parse_args()
+
+    # args.hdf = "/blender/storage/home/chexov/smoke_attn/fusion_vg_smoke_v3.1.h5"
+    # args.video_file = "/Volumes/SD128/testvideo/smoke_scene_in_the_movies.mp4"
+
+    with CustomObjectScope({'relu6': mobilenet.relu6, 'DepthwiseConv2D': mobilenet.DepthwiseConv2D}):
+        m = load_model(args.hdf)
+
+    with open('out.jsonl', 'w') as _f:
+        for fn, y in yield_predictions(m, args.video, show=False):
+            v = [fn, y.tolist()]
+            print(v)
+
+            s = json.dumps(v)
+            _f.write("%s\n" % s)
