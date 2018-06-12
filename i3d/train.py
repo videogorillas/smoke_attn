@@ -2,7 +2,7 @@ import os
 
 from keras import Model, Input
 from keras.callbacks import TensorBoard, ModelCheckpoint
-from keras.layers import Dense, concatenate, Flatten
+from keras.layers import Dense, concatenate, Flatten, Dropout
 from keras.losses import binary_crossentropy
 from keras.optimizers import Adam
 
@@ -24,7 +24,10 @@ if __name__ == '__main__':
         weights='rgb_kinetics_only',
         input_tensor=rgb_input,
         classes=NUM_CLASSES)
+
     for l in rgb_model.layers:
+        if "Mixed_5b" == l.name:
+            break
         l.trainable = False
     rgb_y = rgb_model.get_output_at(0)
 
@@ -35,6 +38,7 @@ if __name__ == '__main__':
         weights='flow_kinetics_only',
         input_tensor=flow_input,
         classes=NUM_CLASSES)
+
     for l in flow_model.layers:
         l.trainable = False
         l.name = "flow-" + l.name
@@ -42,7 +46,10 @@ if __name__ == '__main__':
 
     y = concatenate([rgb_y, flow_y])
     y = Flatten()(y)
-    y = Dense(2, activation="softmax", name="fc9")(y)
+    y = Dropout(0.5)(y)
+    y = Dense(256, activation='relu', name='fc9')(y)
+    y = Dropout(0.2)(y)
+    y = Dense(2, activation="softmax", name="fc10")(y)
     model = Model(inputs=[rgb_input, flow_input], outputs=y)
 
     # plot_model(model)
@@ -53,7 +60,7 @@ if __name__ == '__main__':
     train_seq = I3DFusionSequence(data_dir, "train.txt", batch_size=16, num_frames=16)
     val_seq = I3DFusionSequence(data_dir, "validate.txt", batch_size=16, num_frames=16)
 
-    hdf = "i3d_kinetics_finetune_v1.0.hdf"
+    hdf = "i3d_kinetics_finetune_v1.1.hdf"
 
     log_dir = os.path.join("./logs", os.path.basename(hdf))
     model.fit_generator(train_seq, len(train_seq), epochs=10,

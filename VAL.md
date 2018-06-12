@@ -35,3 +35,9 @@ precision: 0.599776, recall:0.460515 basic-crop fusion_vg_smoke_v3.2.h5
 normalized opticalflow; fusion_vg_smoke_mobilenet_v2.4.h5
 0.8 precision: 0.718078, recall:0.243777 
 0.5 precision: 0.624893, recall:0.624893 (edited)
+
+i3d_kinetics_finetune_v1.0.hdf; threshold=0.5; basic-cropped.mp4;
+precision: 0.611470, recall:0.611470
+
+i3d_kinetics_finetune_v1.0.hdf; thresh=0.5; 072\ -\ Virginia\ Madsen\ smoking\ style.mp4
+precision: 0.585958, recall:0.585958

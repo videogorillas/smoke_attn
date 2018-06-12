@@ -97,7 +97,7 @@ if __name__ == '__main__':
     model = Model(inputs=[input_c3d], outputs=x)
 
     # plot_model(model)
-    model.compile(SGD(lr=1e-4), binary_crossentropy)  # , ["accuracy", ])
+    model.compile(SGD(lr=1e-4), binary_crossentropy, ["accuracy", ])
     model.summary()
 
     train_seq = C3DSequence("/blender/storage/datasets/vg_smoke/", "train.txt", batch_size=16)

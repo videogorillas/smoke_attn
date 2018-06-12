@@ -45,39 +45,49 @@ class I3DFusionSequence(Sequence):
         self.image_augmentation = None
         # self.image_augmentation = augmentation.ImageAugmentation()
 
+        cls1_count = 0
+        cls0_count = 0
+
         with open(os.path.join(data_dir, train_txt), 'r') as video_fn:
             train_files = list(map(lambda l: l.strip(), video_fn.readlines()))
 
         for video_fn in train_files:
             if video_fn.startswith("no_smoking_videos"):
                 # hack-hack
-                pass
-            else:
-                human_y = os.path.join(self.data_dir, "jsonl.byhuman", video_fn, 'result.jsonl')
-                # machine_y = os.path.join(self.data_dir, "jsonl", _f, 'result.jsonl')
+                continue
 
-                with open(human_y) as f:
-                    predictions_by_frame = [json.loads(s.strip()) for s in f]
+            human_y = os.path.join(self.data_dir, "jsonl.byhuman", video_fn, 'result.jsonl')
+            # machine_y = os.path.join(self.data_dir, "jsonl", _f, 'result.jsonl')
 
-                    p_prev = None
-                    cls_seq = []
-                    for fn_p in predictions_by_frame:
-                        fn, p = fn_p
-                        cls_id = argmax(p)
-                        if p_prev is None:
-                            p_prev = p
+            with open(human_y) as f:
+                predictions_by_frame = [json.loads(s.strip()) for s in f]
 
-                        if p_prev[0] == p[0]:
-                            cls_seq.append(fn_p)
-                        else:
-                            cls_seq = []
-
-                        if len(cls_seq) == self.num_frames:
-                            self.all_seq.append((cls_id, video_fn, cls_seq))
-                            cls_seq = []
+                p_prev = None
+                cls_seq = []
+                for fn_p in predictions_by_frame:
+                    fn, p = fn_p
+                    cls_id = argmax(p)
+                    if p_prev is None:
                         p_prev = p
 
+                    if p_prev[0] == p[0]:
+                        cls_seq.append(fn_p)
+
+                    if len(cls_seq) == self.num_frames:
+                        self.all_seq.append((cls_id, video_fn, cls_seq))
+
+                        # Stats
+                        if cls_id == 1:
+                            cls1_count = cls1_count + 1
+                        if cls_id == 0:
+                            cls0_count = cls0_count + 1
+
+                        cls_seq = []
+                    p_prev = p
+
+        assert len(self.all_seq) > 0, "empty dataset. something is wrong"
         shuffle(self.all_seq)
+        print("Class distribution: cls1=%d; cls0=%d" % (cls1_count, cls0_count))
 
     def __getitem__(self, index):
         s = index * self.batch_size
@@ -162,7 +172,7 @@ class I3DFusionSequence(Sequence):
 
 if __name__ == '__main__':
     seq = I3DFusionSequence("/Volumes/bstorage/datasets/vg_smoke/", "train.txt",
-                            input_hw=(224, 224), batch_size=32, num_frames=8,
+                            input_hw=(224, 224), batch_size=32, num_frames=16,
                             show=True)
     print(len(seq))
     # val = C3DSequence("/Volumes/bstorage/datasets/vg_smoke/", "validate.txt")

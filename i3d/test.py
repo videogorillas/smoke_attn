@@ -4,14 +4,18 @@ Evaluates a RGB and Flow sample similar to the paper's github repo: 'https://git
 '''
 
 import argparse
+import json
 from cv2 import DualTVL1OpticalFlow_create as DualTVL1
+from itertools import count
 
 import cv2
 import numpy as np
+from keras.models import load_model
 
+from dataset import calc_flow
 from i3d_inception import Inception_Inflated3d
 
-NUM_FRAMES = 25
+NUM_FRAMES = 16
 FRAME_HEIGHT = 224
 FRAME_WIDTH = 224
 NUM_RGB_CHANNELS = 3
@@ -26,6 +30,67 @@ SAMPLE_DATA_PATH = {
 
 LABEL_MAP_PATH = 'data/label_map.txt'
 TVL1 = DualTVL1()
+
+
+def m2(video_f, show=False):
+    m = load_model('/blender/storage/home/chexov/smoke_attn/i3d_kinetics_finetune_v1.0.hdf')
+
+    inputs = []
+    flow = []
+
+    cap = cv2.VideoCapture(video_f)
+    prev = None
+    fn_counter = count()
+    fn_startrange = 0
+    while cap.isOpened():
+        ret, bgr = cap.read()
+        fn = next(fn_counter)
+
+        if bgr is None:
+            break
+
+        h, w, c = bgr.shape
+        ratio = w / h
+        w_resized = int(224 * ratio)
+        resized = cv2.resize(bgr, (w_resized, 224))
+        # cv2.imshow("resized", resized)
+        # cv2.waitKey(0)
+
+        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+
+        w1 = int((w_resized / 2) - 224 / 2)
+        rgb = rgb[0:224, w1:w1 + 224, :]
+
+        gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+        if prev is None:
+            prev = gray
+
+        curr_flow = calc_flow(gray, prev)
+        flow.append(curr_flow)
+        prev = gray
+        if show:
+            cv2.imshow("cropped", cv2.cvtColor(rgb.astype(np.uint8), cv2.COLOR_RGB2BGR))
+
+        rgb = rgb / 127.5 - 1
+        inputs.append(rgb)
+
+        if len(inputs) == NUM_FRAMES:
+            x_rgb = np.array([inputs])
+            x_flow = np.array([flow])
+            y_batch = m.predict([x_rgb, x_flow])
+
+            y = y_batch[0]
+            for i in range(fn_startrange, fn):
+                yield [i, y.tolist()]
+
+            if show:
+                cls_id = np.argmax(y)
+                cv2.imshow("%s" % cls_id, resized)
+                cv2.waitKey(25)
+
+            inputs = []
+            flow = []
+            fn_startrange = fn
 
 
 def m(video_f):
@@ -107,16 +172,6 @@ def m(video_f):
             flow = []
 
 
-def calc_flow(gray, prev):
-    curr_flow = TVL1.calc(prev, gray, None)
-    curr_flow[curr_flow >= 20] = 20
-    curr_flow[curr_flow <= -20] = -20
-    # scale to [-1, 1]
-    max_val = lambda x: max(max(x.flatten()), abs(min(x.flatten())))
-    curr_flow = curr_flow / max_val(curr_flow)
-    return curr_flow
-
-
 def main(eval_type, ):
     # load the kinetics classes
     kinetics_classes = [x.strip() for x in open(LABEL_MAP_PATH, 'r')]
@@ -194,15 +249,21 @@ def main(eval_type, ):
 if __name__ == '__main__':
     # parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--eval-type',
-                        help='specify model type. 1 stream (rgb or flow) or 2 stream (joint = rgb and flow).',
-                        type=str, choices=['rgb', 'flow', 'joint'], default='joint')
-
-    parser.add_argument('--no-imagenet-pretrained',
-                        help='If set, load model weights trained only on kinetics dataset. Otherwise, load model weights trained on imagenet and kinetics dataset.',
-                        action='store_true')
+    parser.add_argument('video_file', type=str, help="path to the video file")
+    # parser.add_argument('--eval-type',
+    #                     help='specify model type. 1 stream (rgb or flow) or 2 stream (joint = rgb and flow).',
+    #                     type=str, choices=['rgb', 'flow', 'joint'], default='joint')
+    # 
+    # parser.add_argument('--no-imagenet-pretrained',
+    #                     help='If set, load model weights trained only on kinetics dataset. Otherwise, load model weights trained on imagenet and kinetics dataset.',
+    #                     action='store_true')
 
     args = parser.parse_args()
-    m("/Volumes/SD128/testvideo/smoke_scene_in_the_movies.mp4")
-    # m("/Volumes/SD128/testvideo/basic_inst/basic.mp4")
+    # m2("/Volumes/SD128/testvideo/smoke_scene_in_the_movies.mp4")
+    # for fn, y in m2("/Volumes/SD128/testvideo/basic_inst/basic.mp4"):
+    with open('out.jsonl', 'w') as _f:
+        for fn_y in m2(args.video_file, show=True):
+            s = json.dumps(fn_y)
+            print(s)
+            _f.write("%s\n" % s)
     # main(parser.eval_type)
