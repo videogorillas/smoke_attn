@@ -158,7 +158,7 @@ def validate_single(machine_json, human_json, video_f):
 
 def main():
     vg_smoke_dir = '/Volumes/bstorage/datasets/vg_smoke/'
-    with open('%s/smoking_scenes.txt' % vg_smoke_dir, 'r') as _f:
+    with open('%s/validate.txt' % vg_smoke_dir, 'r') as _f:
         for mp4 in _f.readlines():
             mp4 = mp4.strip()
             video_f = os.path.join(vg_smoke_dir, mp4)

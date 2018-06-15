@@ -11,7 +11,7 @@ from i3d_dataset import I3DFusionSequence
 from i3d_inception import Inception_Inflated3d
 
 if __name__ == '__main__':
-    NUM_FRAMES = 16
+    NUM_FRAMES = 32
     FRAME_HEIGHT = 224
     FRAME_WIDTH = 224
     NUM_RGB_CHANNELS = 3
@@ -84,16 +84,16 @@ if __name__ == '__main__':
     model.summary()
 
     data_dir = "/blender/storage/datasets/vg_smoke/"
-    train_seq = I3DFusionSequence(data_dir, "train.txt", batch_size=16, num_frames=16)
-    val_seq = I3DFusionSequence(data_dir, "validate.txt", batch_size=16, num_frames=16)
+    train_seq = I3DFusionSequence(data_dir, "train.txt", batch_size=16, num_frames_in_sequence=NUM_FRAMES)
+    val_seq = I3DFusionSequence(data_dir, "validate.txt", batch_size=16, num_frames_in_sequence=NUM_FRAMES)
 
-    hdf = "i3d_kinetics_finetune_v1.4.1.hdf"
+    hdf = "i3d_kinetics_finetune_v1.5.1.hdf"
 
     assert subprocess.call("git tag %s" % hdf, shell=True) == 0, "rename the experement"
 
     log_dir = os.path.join("./logs", os.path.basename(hdf))
     model.fit_generator(train_seq, len(train_seq), epochs=10,
-                        use_multiprocessing=True, workers=10,
+                        use_multiprocessing=True, workers=10, max_queue_size=5,
                         validation_data=val_seq, validation_steps=len(val_seq),
                         verbose=1, callbacks=[TensorBoard(log_dir), ModelCheckpoint(hdf, save_best_only=True)],
                         )

@@ -53,3 +53,7 @@ twice more negative samples
 i3d_v1.4:
 more trainable params for optical flow model
 random crop for clips instead of center (augmentation)
+
+i3d_kinetics_finetune_v1.5.1
+- added activity net positives for training
+- added negatives and positives into valset

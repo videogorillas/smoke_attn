@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #
+import csv
 import itertools
 import json
 import os
@@ -43,13 +44,42 @@ def center_crop(rgb, new_height, new_width, jitter=True):
     return rgb[y:y + new_height, x:x + new_width, :]
 
 
+def load_activity_net_positives(data_dir):
+    with open(data_dir + '/activity_net-positives.csv') as _f:
+        rdr = csv.reader(_f)
+
+        for row in rdr:
+            _, id, start_sec, end_sec, _ = row
+            print(id, start_sec, end_sec)
+
+            cap = cv2.VideoCapture(data_dir + "/activity_net/%s.mp4" % id)
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            total_frames = cap.get(cv2.CAP_PROP_POS_FRAMES)
+
+            s_fn = int(fps * float(start_sec))
+            e_fn = int(fps * float(end_sec))
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(s_fn))
+
+            fn_iter = itertools.count(s_fn)
+            while cap.isOpened():
+                ret, bgr = cap.read()
+                fn = next(fn_iter)
+                if ret and fn < e_fn:
+                    cv2.imshow("a", bgr)
+                    cv2.waitKey(25)
+                else:
+                    break
+
+            cap.release()
+
+
 class I3DFusionSequence(Sequence):
 
     def __init__(self, data_dir, train_txt: str, batch_size: int = 32, input_hw=(224, 224), show=False,
-                 num_frames: int = 16):
+                 num_frames_in_sequence: int = 16):
         self.TVL1 = DualTVL1()
         self.input_hw = input_hw
-        self.num_frames = num_frames
+        self.num_frames = num_frames_in_sequence
         self.batch_size = batch_size
         self.data_dir = data_dir
         self.all_seq = []
@@ -60,6 +90,39 @@ class I3DFusionSequence(Sequence):
         cls1_count = 0
         cls0_count = 0
 
+        if train_txt == "train.txt":
+            print("Loading activity_net", train_txt)
+            # Load activity-net positives {{{
+            with open(data_dir + '/activity_net-positives.csv') as _f:
+                rdr = csv.reader(_f)
+
+                for row in rdr:
+                    _, id, start_sec, end_sec, _ = row
+
+                    video_fn = "activity_net/%s.mp4" % id
+                    cap = cv2.VideoCapture(data_dir + "/" + video_fn)
+                    fps = cap.get(cv2.CAP_PROP_FPS)
+                    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                    cap.release()
+
+                    _start_fn = int(fps * float(start_sec))
+                    _end_fn = int(fps * float(end_sec))
+                    # print(id, _start_fn, _end_fn)
+
+                    for moment_start in range(_start_fn,
+                                              min(_end_fn + num_frames_in_sequence + 4, total_frames),
+                                              num_frames_in_sequence):
+                        start_fn = moment_start
+                        end_fn = start_fn + num_frames_in_sequence
+
+                        # train sequence
+                        cls_seq = []
+                        for _fn in range(start_fn, end_fn):
+                            cls_seq.append((_fn, [0, 1.0]))
+                        self.all_seq.append((1, video_fn, cls_seq))
+                        cls1_count = cls1_count + 1
+            # }}}
+
         with open(os.path.join(data_dir, train_txt), 'r') as video_fn:
             train_files = list(map(lambda l: l.strip(), video_fn.readlines()))
 
@@ -69,12 +132,12 @@ class I3DFusionSequence(Sequence):
 
                 # Choose random clip from the video
                 cap = cv2.VideoCapture(os.path.join(self.data_dir, video_fn))
-                _frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
                 cap.release()
 
-                for moment_start in range(0, int(_frames / num_frames) - 1):
+                for moment_start in range(0, int(total_frames / num_frames_in_sequence) - 1):
                     start_fn = moment_start
-                    end_fn = start_fn + num_frames
+                    end_fn = start_fn + num_frames_in_sequence
 
                     # train sequence
                     cls_seq = []
@@ -205,7 +268,7 @@ class I3DFusionSequence(Sequence):
 
 if __name__ == '__main__':
     seq = I3DFusionSequence("/Volumes/bstorage/datasets/vg_smoke/", "train.txt",
-                            input_hw=(224, 224), batch_size=32, num_frames=16,
+                            input_hw=(224, 224), batch_size=32, num_frames_in_sequence=32,
                             show=True)
     print(len(seq))
     # val = C3DSequence("/Volumes/bstorage/datasets/vg_smoke/", "validate.txt")
