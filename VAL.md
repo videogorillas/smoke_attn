@@ -41,3 +41,15 @@ precision: 0.611470, recall:0.611470
 
 i3d_kinetics_finetune_v1.0.hdf; thresh=0.5; 072\ -\ Virginia\ Madsen\ smoking\ style.mp4
 precision: 0.585958, recall:0.585958
+
+
+i3d_v1.2 
+i3d_kinetics_finetune_v1.2.hdf; 0.52; basic-cropped.mp4
+precision: 0.464450, recall:0.349288
+
+i3d_v1.3:
+twice more negative samples
+
+i3d_v1.4:
+more trainable params for optical flow model
+random crop for clips instead of center (augmentation)

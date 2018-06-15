@@ -1,8 +1,9 @@
 import os
+import subprocess
 
 from keras import Model, Input
 from keras.callbacks import TensorBoard, ModelCheckpoint
-from keras.layers import Dense, concatenate, Flatten, Dropout
+from keras.layers import Dense, concatenate, Flatten, Dropout, Reshape, Conv2D, MaxPooling2D
 from keras.losses import binary_crossentropy
 from keras.optimizers import Adam
 
@@ -25,10 +26,15 @@ if __name__ == '__main__':
         input_tensor=rgb_input,
         classes=NUM_CLASSES)
 
-    for l in rgb_model.layers:
+    for i, l in enumerate(rgb_model.layers):
+        # if i >= 181:
+        #     break
+
         if "Mixed_5b" == l.name:
             break
+
         l.trainable = False
+
     rgb_y = rgb_model.get_output_at(0)
 
     flow_input = Input(shape=(NUM_FRAMES, FRAME_HEIGHT, FRAME_WIDTH, NUM_FLOW_CHANNELS))
@@ -40,16 +46,37 @@ if __name__ == '__main__':
         classes=NUM_CLASSES)
 
     for l in flow_model.layers:
-        l.trainable = False
         l.name = "flow-" + l.name
+
+    for l in flow_model.layers:
+        if "flow-Mixed_5b" == l.name:
+            break
+        l.trainable = False
+
     flow_y = flow_model.get_output_at(0)
 
     y = concatenate([rgb_y, flow_y])
-    y = Flatten()(y)
-    y = Dropout(0.5)(y)
-    y = Dense(256, activation='relu', name='fc9')(y)
-    y = Dropout(0.2)(y)
-    y = Dense(2, activation="softmax", name="fc10")(y)
+
+    v1 = True
+    if v1:
+        # Classification v1
+        y = Flatten()(y)
+        y = Dropout(0.5)(y)
+        y = Dense(256, activation='relu', name='fc9')(y)
+        y = Dropout(0.2)(y)
+        y = Dense(2, activation="softmax", name="fc10")(y)
+    else:
+        # Classification v2
+        num_classes = 2
+        y = Reshape((NUM_FRAMES, 64, 2))(y)
+        # y = AveragePooling2D((7, 7), padding='valid')(y)
+        y = MaxPooling2D((7, 7), padding='valid')(y)
+        y = Dropout(0.42)(y)
+        y = Conv2D(num_classes, (7, 7), padding='same')(y)
+        y = Dropout(0.2)(y)
+        y = Flatten()(y)
+        y = Dense(2, activation="softmax", name="fc10")(y)
+
     model = Model(inputs=[rgb_input, flow_input], outputs=y)
 
     # plot_model(model)
@@ -60,7 +87,9 @@ if __name__ == '__main__':
     train_seq = I3DFusionSequence(data_dir, "train.txt", batch_size=16, num_frames=16)
     val_seq = I3DFusionSequence(data_dir, "validate.txt", batch_size=16, num_frames=16)
 
-    hdf = "i3d_kinetics_finetune_v1.1.hdf"
+    hdf = "i3d_kinetics_finetune_v1.4.1.hdf"
+
+    assert subprocess.call("git tag %s" % hdf, shell=True) == 0, "rename the experement"
 
     log_dir = os.path.join("./logs", os.path.basename(hdf))
     model.fit_generator(train_seq, len(train_seq), epochs=10,

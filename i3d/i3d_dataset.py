@@ -4,7 +4,7 @@ import itertools
 import json
 import os
 from cv2 import DualTVL1OpticalFlow_create as DualTVL1
-from random import shuffle
+from random import shuffle, randint
 
 import cv2
 import numpy
@@ -14,7 +14,7 @@ from numpy import argmax
 from dataset import calc_flow
 
 
-def resize_new_height(rgb, new_height):
+def scale_to_new_height(rgb, new_height):
     h, w, c = rgb.shape
     ratio = w / h
     w_resized = int(new_height * ratio)
@@ -22,11 +22,23 @@ def resize_new_height(rgb, new_height):
     return resized
 
 
-def center_crop(rgb, new_height, new_width):
+def crop_xy(rgb, new_height, new_width, x, y):
+    h, w, c = rgb.shape
+    x = min(x, w - new_width)
+    y = min(y, h - new_height)
+    return rgb[y:y + new_height, x:x + new_width, :]
+
+
+def center_crop(rgb, new_height, new_width, jitter=True):
     h, w, c = rgb.shape
 
     y = int(h / 2 - new_height / 2)
     x = int(w / 2 - new_width / 2)
+
+    # jitter
+    if jitter:
+        x = randint(0, x)
+        y = randint(0, y)
 
     return rgb[y:y + new_height, x:x + new_width, :]
 
@@ -53,7 +65,23 @@ class I3DFusionSequence(Sequence):
 
         for video_fn in train_files:
             if video_fn.startswith("no_smoking_videos"):
-                # hack-hack
+                # Folder for negatives
+
+                # Choose random clip from the video
+                cap = cv2.VideoCapture(os.path.join(self.data_dir, video_fn))
+                _frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                cap.release()
+
+                for moment_start in range(0, int(_frames / num_frames) - 1):
+                    start_fn = moment_start
+                    end_fn = start_fn + num_frames
+
+                    # train sequence
+                    cls_seq = []
+                    for _fn in range(start_fn, end_fn):
+                        cls_seq.append((_fn, [1.0, 0]))
+                    self.all_seq.append((0, video_fn, cls_seq))
+                    cls0_count = cls0_count + 1
                 continue
 
             human_y = os.path.join(self.data_dir, "jsonl.byhuman", video_fn, 'result.jsonl')
@@ -123,6 +151,8 @@ class I3DFusionSequence(Sequence):
         xflow = numpy.zeros(shape=(self.num_frames, self.input_hw[0], self.input_hw[1], 2))
 
         prev_gray = None
+        x = randint(0, 32)
+        y = randint(0, 32)
         while cap.isOpened():
             ret, bgr = cap.read()
 
@@ -131,8 +161,9 @@ class I3DFusionSequence(Sequence):
                 break
 
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-            rgb = resize_new_height(rgb, self.input_hw[0])
-            rgb = center_crop(rgb, self.input_hw[0], self.input_hw[1])
+            rgb = scale_to_new_height(rgb, self.input_hw[0])
+            # rgb = center_crop(rgb, self.input_hw[0], self.input_hw[1], jitter=False)
+            rgb = crop_xy(rgb, self.input_hw[0], self.input_hw[1], x, y)
             gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
 
             if prev_gray is None:
@@ -148,12 +179,14 @@ class I3DFusionSequence(Sequence):
 
             if self.show:
                 print(video_path)
-                cv2.imshow("%d f%d" % (fn + start_frame, cls_id), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+                # cv2.imshow("%d f%d" % (fn + start_frame, cls_id), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+                cv2.imshow("clsid%d" % (cls_id), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
                 cv2.waitKey(25)
 
             rgb = rgb / 127.5 - 1
             xframes[fn, :, :, :] = rgb
 
+        cap.release()
         # Crop to 112x112
         # reshape_frames = xframes[:, 8:120, 30:142, :]
 
