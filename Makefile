@@ -1,6 +1,9 @@
 
 gpu ?= 1
 
+train_i3d:
+	PYTHONPATH=${PWD}/src OPENCV_OPENCL_RUNTIME="" CUDA_VISIBLE_DEVICES=${gpu} python ./i3d/train.py
+
 train_fusion_v4:
 	OPENCV_OPENCL_RUNTIME="" CUDA_VISIBLE_DEVICES=${gpu} python ./src/train_fusion_v4_vgg.py
 
