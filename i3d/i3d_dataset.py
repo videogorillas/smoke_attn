@@ -96,11 +96,13 @@ class I3DFusionSequence(Sequence):
             with open(data_dir + '/activity_net-positives.csv') as _f:
                 rdr = csv.reader(_f)
 
+                cap = cv2.VideoCapture()
                 for row in rdr:
                     _, id, start_sec, end_sec, _ = row
 
                     video_fn = "activity_net/%s.mp4" % id
-                    cap = cv2.VideoCapture(data_dir + "/" + video_fn)
+                    # cap = cv2.VideoCapture(data_dir + "/" + video_fn)
+                    cap.open(data_dir + "/" + video_fn)
                     fps = cap.get(cv2.CAP_PROP_FPS)
                     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
                     cap.release()
@@ -187,16 +189,17 @@ class I3DFusionSequence(Sequence):
         xrgb_batch = numpy.zeros(shape=(self.batch_size, self.num_frames, self.input_hw[0], self.input_hw[1], 3))
         xflow_batch = numpy.zeros(shape=(self.batch_size, self.num_frames, self.input_hw[0], self.input_hw[1], 2))
         ybatch = numpy.zeros(shape=(self.batch_size, 2))
+        cap = cv2.VideoCapture()
         for ii in range(s, e):
             i = ii - s
-            xrgb, xflow, y = self.get_one_xy(ii)
+            xrgb, xflow, y = self.get_one_xy(ii, cap=cap)
             xrgb_batch[i, :, :, :, :] = xrgb
             xflow_batch[i, :, :, :, :] = xflow
             ybatch[i, :] = y
 
         return [xrgb_batch, xflow_batch], ybatch
 
-    def get_one_xy(self, index):
+    def get_one_xy(self, index, cap=cv2.VideoCapture()):
         if self.image_augmentation:
             self.image_augmentation.renew()  # change random sequence for imgaug
 
@@ -207,7 +210,8 @@ class I3DFusionSequence(Sequence):
         end_frame = start_frame + len(cls_seq)
 
         video_path = os.path.join(self.data_dir, v_file)
-        cap = cv2.VideoCapture(video_path)
+        # cap = cv2.VideoCapture(video_path)
+        cap.open(video_path)
         cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
         fn_counter = itertools.count()
         xframes = numpy.zeros(shape=(self.num_frames, self.input_hw[0], self.input_hw[1], 3))
