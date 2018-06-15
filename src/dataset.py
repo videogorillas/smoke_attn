@@ -46,10 +46,9 @@ def calc_flow(gray, prev):
     # curr_flow = cv2.cartToPolar(flow[..., 0], flow[..., 1])
     curr_flow[curr_flow >= 20] = 20
     curr_flow[curr_flow <= -20] = -20
-    # scale to [-1, 1]
-    max_val_f = lambda x: max(max(x.flatten()), abs(min(x.flatten())))
-    max_val = max_val_f(curr_flow)
 
+    # scale to [-1, 1]
+    max_val = max(curr_flow.max(), abs(curr_flow.min()))
     if max_val == 0:
         return curr_flow
     else:

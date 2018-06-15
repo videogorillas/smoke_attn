@@ -4,7 +4,6 @@ import csv
 import itertools
 import json
 import os
-from cv2 import DualTVL1OpticalFlow_create as DualTVL1
 from random import shuffle, randint
 
 import cv2
@@ -171,7 +170,6 @@ class I3DFusionSequence(Sequence):
 
     def __init__(self, data_dir, train_txt: str, batch_size: int = 32, input_hw=(224, 224), show=False,
                  num_frames_in_sequence: int = 16):
-        self.TVL1 = DualTVL1()
         self.input_hw = input_hw
         self.num_frames = num_frames_in_sequence
         self.batch_size = batch_size
