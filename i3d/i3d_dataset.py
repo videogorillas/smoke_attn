@@ -181,12 +181,13 @@ class I3DFusionSequence(Sequence):
 
         self.cap = cv2.VideoCapture()
 
-        if os.path.isfile("all_seq.json"):
-            with open('all_seq.json', 'r') as _f:
+        all_seq_fn = train_txt + "_all_seq.json"
+        if os.path.isfile(all_seq_fn):
+            with open(all_seq_fn, 'r') as _f:
                 self.all_seq = json.load(_f)
         else:
             self.all_seq = load_sequences(data_dir, num_frames_in_sequence, train_txt)
-            with open('all_seq.json', 'w') as _f:
+            with open(all_seq_fn, 'w') as _f:
                 json.dump(self.all_seq, _f)
 
         assert len(self.all_seq) > 0, "empty dataset. something is wrong"

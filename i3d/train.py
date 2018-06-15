@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
     log_dir = os.path.join("./logs", os.path.basename(hdf))
     model.fit_generator(train_seq, len(train_seq), epochs=10,
-                        use_multiprocessing=True, workers=10, max_queue_size=5,
+                        #use_multiprocessing=True, workers=10, max_queue_size=5,
                         validation_data=val_seq, validation_steps=len(val_seq),
                         verbose=1, callbacks=[TensorBoard(log_dir), ModelCheckpoint(hdf, save_best_only=True)],
                         )
