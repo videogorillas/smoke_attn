@@ -5,7 +5,7 @@ from keras import Model, Input
 from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.layers import Dense, concatenate, Flatten, Dropout
 from keras.losses import binary_crossentropy
-from keras.optimizers import SGD
+from keras.optimizers import SGD, Adam
 
 from i3d_dataset import I3DFusionSequence
 from i3d_inception import Inception_Inflated3d
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     model = Model(inputs=[rgb_input, flow_input], outputs=y)
 
     # plot_model(model)
-    model.compile(SGD(lr=1e-4), binary_crossentropy, metrics=["accuracy", ])
+    model.compile(Adam(lr=1e-4), binary_crossentropy, metrics=["accuracy", ])
     model.summary()
 
     data_dir = "/blender/storage/datasets/vg_smoke/"

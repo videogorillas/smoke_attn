@@ -95,28 +95,10 @@ def load_activity_net_positives(data_dir):
 def load_dataset_sequences(data_dir, train_txt):
     dataset_sequences = []
     if train_txt == "train.txt":
-        print("Loading activity_net", train_txt)
-        # Load activity-net positives {{{
-        with open(data_dir + '/activity_net-positives.csv') as _f:
-            rdr = csv.reader(_f)
-
-            cap = cv2.VideoCapture()
-            for row in rdr:
-                _, id, start_sec, end_sec, _ = row
-
-                video_fn = "activity_net/%s.mp4" % id
-                # cap = cv2.VideoCapture(data_dir + "/" + video_fn)
-                cap.open(data_dir + "/" + video_fn)
-                fps = cap.get(cv2.CAP_PROP_FPS)
-                total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                cap.release()
-
-                _start_fn = int(fps * float(start_sec))
-                _end_fn = int(fps * float(end_sec))
-                # print(id, _start_fn, _end_fn)
-                if _end_fn > _start_fn:
-                    dataset_sequences.append((1, video_fn, _start_fn, _end_fn))
-        # }}}
+        print("Loading activity_net subset", train_txt)
+        load_activity_net_seq(data_dir, dataset_sequences)
+        print("Loading kinetics600 subset", train_txt)
+        load_kinetics600_positives(data_dir, dataset_sequences)
 
     with open(os.path.join(data_dir, train_txt), 'r') as video_fn:
         train_files = list(map(lambda l: l.strip(), video_fn.readlines()))
@@ -148,6 +130,60 @@ def load_dataset_sequences(data_dir, train_txt):
                     dataset_sequences.append((cls_id, video_fn, _start_fn, _end_fn))
 
     return dataset_sequences
+
+
+def load_activity_net_seq(data_dir, dataset_sequences):
+    with open(data_dir + '/activity_net-positives.csv') as _f:
+        rdr = csv.reader(_f)
+
+        cap = cv2.VideoCapture()
+        for row in rdr:
+            _, id, start_sec, end_sec, _ = row
+
+            video_fn = "activity_net/%s.mp4" % id
+            # cap = cv2.VideoCapture(data_dir + "/" + video_fn)
+            cap.open(data_dir + "/" + video_fn)
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            cap.release()
+
+            _start_fn = int(fps * float(start_sec))
+            _end_fn = int(fps * float(end_sec))
+            # print(id, _start_fn, _end_fn)
+            if _end_fn > _start_fn:
+                dataset_sequences.append((1, video_fn, _start_fn, _end_fn))
+
+
+def load_kinetics600_positives(data_dir, dataset_sequences):
+    with open(data_dir + '/k600.csv') as _f:
+        rdr = csv.reader(_f)
+
+        cap = cv2.VideoCapture()
+        for row in rdr:
+            # smoking,EYJlJZuSypI,1,11,train
+            _, id, start_sec, end_sec, _ = row
+
+            video_fn = "k600/%s.mp4" % id
+            # cap = cv2.VideoCapture(data_dir + "/" + video_fn)
+            cap.open(data_dir + "/" + video_fn)
+
+            h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+            if h > w:
+                print("Verical video? %s. skipping" % video_fn)
+                cap.release()
+                continue
+
+            cap.release()
+
+            _start_fn = int(fps * float(start_sec))
+            _end_fn = int(fps * float(end_sec))
+            # print(id, _start_fn, _end_fn)
+            if _end_fn > _start_fn:
+                dataset_sequences.append((1, video_fn, _start_fn, _end_fn))
 
 
 class I3DFusionSequence(Sequence):
