@@ -3,9 +3,9 @@ import subprocess
 
 from keras import Model, Input
 from keras.callbacks import TensorBoard, ModelCheckpoint
-from keras.layers import Dense, concatenate, Flatten, Dropout, Reshape, Conv2D, MaxPooling2D
+from keras.layers import Dense, concatenate, Flatten, Dropout
 from keras.losses import binary_crossentropy
-from keras.optimizers import Adam
+from keras.optimizers import SGD
 
 from i3d_dataset import I3DFusionSequence
 from i3d_inception import Inception_Inflated3d
@@ -49,51 +49,37 @@ if __name__ == '__main__':
         l.name = "flow-" + l.name
 
     for l in flow_model.layers:
-        if "flow-Mixed_5b" == l.name:
-            break
+        # if "flow-Mixed_5b" == l.name:
+        #     break
         l.trainable = False
 
     flow_y = flow_model.get_output_at(0)
 
     y = concatenate([rgb_y, flow_y])
 
-    v1 = True
-    if v1:
-        # Classification v1
-        y = Flatten()(y)
-        y = Dropout(0.5)(y)
-        y = Dense(256, activation='relu', name='fc9')(y)
-        y = Dropout(0.2)(y)
-        y = Dense(2, activation="softmax", name="fc10")(y)
-    else:
-        # Classification v2
-        num_classes = 2
-        y = Reshape((NUM_FRAMES, 64, 2))(y)
-        # y = AveragePooling2D((7, 7), padding='valid')(y)
-        y = MaxPooling2D((7, 7), padding='valid')(y)
-        y = Dropout(0.42)(y)
-        y = Conv2D(num_classes, (7, 7), padding='same')(y)
-        y = Dropout(0.2)(y)
-        y = Flatten()(y)
-        y = Dense(2, activation="softmax", name="fc10")(y)
-
+    y = Flatten()(y)
+    y = Dropout(0.5)(y)
+    y = Dense(256, activation='relu', name='fc9')(y)
+    y = Dropout(0.2)(y)
+    y = Dense(2, activation="softmax", name="fc10")(y)
     model = Model(inputs=[rgb_input, flow_input], outputs=y)
 
     # plot_model(model)
-    model.compile(Adam(lr=1e-4), binary_crossentropy, metrics=["accuracy", ])
+    model.compile(SGD(lr=1e-4), binary_crossentropy, metrics=["accuracy", ])
     model.summary()
 
     data_dir = "/blender/storage/datasets/vg_smoke/"
     train_seq = I3DFusionSequence(data_dir, "train.txt", batch_size=16, num_frames_in_sequence=NUM_FRAMES)
     val_seq = I3DFusionSequence(data_dir, "validate.txt", batch_size=16, num_frames_in_sequence=NUM_FRAMES)
 
-    hdf = "i3d_kinetics_finetune_v1.5.1.hdf"
+    hdf = "i3d_kinetics_finetune_v1.6.1.hdf"
 
-    assert subprocess.call("git tag %s" % hdf, shell=True) == 0, "rename the experement"
+    assert subprocess.call("git tag %s" % hdf, shell=True) == 0, "rename the experiment"
 
     log_dir = os.path.join("./logs", os.path.basename(hdf))
     model.fit_generator(train_seq, len(train_seq), epochs=10,
-                        #use_multiprocessing=True, workers=10, max_queue_size=5,
+                        # use_multiprocessing=True, workers=10, max_queue_size=5,
                         validation_data=val_seq, validation_steps=len(val_seq),
-                        verbose=1, callbacks=[TensorBoard(log_dir), ModelCheckpoint(hdf, save_best_only=True)],
+                        verbose=1,
+                        callbacks=[TensorBoard(log_dir), ModelCheckpoint(hdf, verbose=1, save_best_only=True)],
                         )

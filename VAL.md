@@ -57,3 +57,11 @@ random crop for clips instead of center (augmentation)
 i3d_kinetics_finetune_v1.5.1
 - added activity net positives for training
 - added negatives and positives into valset
+
+432/432 [==============================] - 8357s 19s/step - loss: 0.3276 - acc: 0.8663 - val_loss: 0.6445 - val_acc: 0.6944
+
+basic-cropped.mp4
+precision: 0.650030, recall:0.469388
+
+i3d_kinetics_finetune_v1.6.1
+- select samples differently

@@ -14,6 +14,26 @@ from numpy import argmax
 from dataset import calc_flow
 
 
+def jsonl_to_sequences(predictions_by_frame):
+    result = []
+    cls_id_prev = -1
+    cls_seq = []
+    for fn_y in predictions_by_frame:
+        fn, y = fn_y
+        cls_id = int(argmax(y))
+
+        if cls_id_prev == -1:
+            cls_id_prev = cls_id
+
+        if cls_id_prev == cls_id:
+            cls_seq.append(fn)
+        else:
+            result.append((cls_id_prev, cls_seq))
+            cls_seq = [fn, ]
+        cls_id_prev = cls_id
+    return result
+
+
 def scale_to_new_height(rgb, new_height):
     h, w, c = rgb.shape
     ratio = w / h
@@ -72,10 +92,8 @@ def load_activity_net_positives(data_dir):
             cap.release()
 
 
-def load_sequences(data_dir, num_frames_in_sequence, train_txt):
-    all_seq = []
-    cls1_count = 0
-    cls0_count = 0
+def load_dataset_sequences(data_dir, train_txt):
+    dataset_sequences = []
     if train_txt == "train.txt":
         print("Loading activity_net", train_txt)
         # Load activity-net positives {{{
@@ -96,22 +114,13 @@ def load_sequences(data_dir, num_frames_in_sequence, train_txt):
                 _start_fn = int(fps * float(start_sec))
                 _end_fn = int(fps * float(end_sec))
                 # print(id, _start_fn, _end_fn)
-
-                for moment_start in range(_start_fn,
-                                          min(_end_fn + num_frames_in_sequence + 4, total_frames),
-                                          num_frames_in_sequence):
-                    start_fn = moment_start
-                    end_fn = start_fn + num_frames_in_sequence
-
-                    # train sequence
-                    cls_seq = []
-                    for _fn in range(start_fn, end_fn):
-                        cls_seq.append((_fn, [0, 1.0]))
-                    all_seq.append((1, video_fn, cls_seq))
-                    cls1_count = cls1_count + 1
+                if _end_fn > _start_fn:
+                    dataset_sequences.append((1, video_fn, _start_fn, _end_fn))
         # }}}
+
     with open(os.path.join(data_dir, train_txt), 'r') as video_fn:
         train_files = list(map(lambda l: l.strip(), video_fn.readlines()))
+
     for video_fn in train_files:
         if video_fn.startswith("no_smoking_videos"):
             # Folder for negatives
@@ -121,16 +130,8 @@ def load_sequences(data_dir, num_frames_in_sequence, train_txt):
             total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
             cap.release()
 
-            for moment_start in range(0, int(total_frames / num_frames_in_sequence) - 1):
-                start_fn = moment_start
-                end_fn = start_fn + num_frames_in_sequence
-
-                # train sequence
-                cls_seq = []
-                for _fn in range(start_fn, end_fn):
-                    cls_seq.append((_fn, [1.0, 0]))
-                all_seq.append((0, video_fn, cls_seq))
-                cls0_count = cls0_count + 1
+            if total_frames > 1:
+                dataset_sequences.append((0, video_fn, 0, total_frames - 1))
             continue
 
         human_y = os.path.join(data_dir, "jsonl.byhuman", video_fn, 'result.jsonl')
@@ -138,32 +139,15 @@ def load_sequences(data_dir, num_frames_in_sequence, train_txt):
 
         with open(human_y) as f:
             predictions_by_frame = [json.loads(s.strip()) for s in f]
+            for _seq in jsonl_to_sequences(predictions_by_frame):
+                cls_id, fnumbers = _seq
 
-            p_prev = None
-            cls_seq = []
-            for fn_p in predictions_by_frame:
-                fn, p = fn_p
-                cls_id = int(argmax(p))
-                if p_prev is None:
-                    p_prev = p
+                _start_fn = fnumbers[0]
+                _end_fn = fnumbers[-1]
+                if _end_fn > _start_fn:
+                    dataset_sequences.append((cls_id, video_fn, _start_fn, _end_fn))
 
-                if p_prev[0] == p[0]:
-                    cls_seq.append(fn_p)
-
-                if len(cls_seq) == num_frames_in_sequence:
-                    all_seq.append((cls_id, video_fn, cls_seq))
-
-                    # Stats
-                    if cls_id == 1:
-                        cls1_count = cls1_count + 1
-                    if cls_id == 0:
-                        cls0_count = cls0_count + 1
-
-                    cls_seq = []
-                p_prev = p
-
-    print("Class distribution: cls1=%d; cls0=%d" % (cls1_count, cls0_count))
-    return all_seq
+    return dataset_sequences
 
 
 class I3DFusionSequence(Sequence):
@@ -174,30 +158,39 @@ class I3DFusionSequence(Sequence):
         self.num_frames = num_frames_in_sequence
         self.batch_size = batch_size
         self.data_dir = data_dir
-        self.all_seq = []
         self.show = show
         self.image_augmentation = None
         # self.image_augmentation = augmentation.ImageAugmentation()
 
-        self.cap = cv2.VideoCapture()
+        dataset_seq = train_txt + "_dataset_seq.json"
 
-        all_seq_fn = train_txt + "_all_seq.json"
-        if os.path.isfile(all_seq_fn):
-            with open(all_seq_fn, 'r') as _f:
-                self.all_seq = json.load(_f)
+        if os.path.isfile(dataset_seq):
+            with open(dataset_seq, 'r') as _f:
+                self.dataset_seq = json.load(_f)
         else:
-            self.all_seq = load_sequences(data_dir, num_frames_in_sequence, train_txt)
-            with open(all_seq_fn, 'w') as _f:
-                json.dump(self.all_seq, _f)
+            self.dataset_seq = load_dataset_sequences(data_dir, train_txt)
+            with open(dataset_seq, 'w') as _f:
+                json.dump(self.dataset_seq, _f)
 
-        assert len(self.all_seq) > 0, "empty dataset. something is wrong"
+        assert len(self.dataset_seq) > 0, "empty dataset. something is wrong"
 
-        # kinda this: all_seq = [  (1, video_fn, cls_seq), ..., ...  ]
-        shuffle(self.all_seq)
+        # all_seq = [  (1, video_fn, cls_seq), ..., ...  ]
+        # dataset_seq = [  (1, video_fn, start_frame, end_frame), ..., ...  ]
+        self.dataset_seq = list(filter(lambda e: e[3] - e[2] >= num_frames_in_sequence, self.dataset_seq))
+
+        shuffle(self.dataset_seq)
+        pos = list(filter(lambda _x: _x[0] == 1, self.dataset_seq))
+        neg = list(filter(lambda _x: _x[0] == 0, self.dataset_seq))
+        print("Samples with %d frames or more: %d" % (num_frames_in_sequence, len(self.dataset_seq)))
+        print("Pos Samples: %d" % len(pos))
+        print("Neg Samples: %d" % len(neg))
+
+    def __len__(self):
+        return int(numpy.ceil(len(self.dataset_seq) / self.batch_size))
 
     def __getitem__(self, index):
         s = index * self.batch_size
-        e = min(len(self.all_seq), s + self.batch_size)
+        e = min(len(self.dataset_seq), s + self.batch_size)
 
         xrgb_batch = numpy.zeros(shape=(self.batch_size, self.num_frames, self.input_hw[0], self.input_hw[1], 3))
         xflow_batch = numpy.zeros(shape=(self.batch_size, self.num_frames, self.input_hw[0], self.input_hw[1], 2))
@@ -205,34 +198,37 @@ class I3DFusionSequence(Sequence):
 
         for ii in range(s, e):
             i = ii - s
-            xrgb, xflow, y = self.get_one_xy(ii, cap=self.cap)
+            xrgb, xflow, y = self.get_one_xy(ii)
             xrgb_batch[i, :, :, :, :] = xrgb
             xflow_batch[i, :, :, :, :] = xflow
             ybatch[i, :] = y
 
         return [xrgb_batch, xflow_batch], ybatch
 
-    def get_one_xy(self, index, cap=cv2.VideoCapture()):
+    def get_one_xy(self, index):
         if self.image_augmentation:
             self.image_augmentation.renew()  # change random sequence for imgaug
 
-        v = self.all_seq[index]
-        cls_id, v_file, cls_seq = v
-        IDX_FRAMENUMBER = 0
-        start_frame = cls_seq[0][IDX_FRAMENUMBER]
-        end_frame = start_frame + len(cls_seq)
+        datum = self.dataset_seq[index]
+
+        cls_id, v_file, start_frame, end_frame = datum
+
+        if self.show:
+            print(index, v_file)
+
+        # the sequence may be long so start every time from a random frame
+        rand_start_frame = randint(start_frame, end_frame - self.num_frames)
 
         video_path = os.path.join(self.data_dir, v_file)
-        # cap = cv2.VideoCapture(video_path)
-        cap.open(video_path)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+        cap = cv2.VideoCapture(video_path)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, rand_start_frame)
         fn_counter = itertools.count()
         xframes = numpy.zeros(shape=(self.num_frames, self.input_hw[0], self.input_hw[1], 3))
         xflow = numpy.zeros(shape=(self.num_frames, self.input_hw[0], self.input_hw[1], 2))
 
         prev_gray = None
-        x = randint(0, 32)
-        y = randint(0, 32)
+        x = randint(0, 32)  # jitter crop for the sequence
+        y = randint(0, 32)  # jitter crop for the sequence
         while cap.isOpened():
             ret, bgr = cap.read()
 
@@ -258,7 +254,6 @@ class I3DFusionSequence(Sequence):
             prev_gray = gray
 
             if self.show:
-                print(video_path)
                 # cv2.imshow("%d f%d" % (fn + start_frame, cls_id), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
                 cv2.imshow("clsid%d" % (cls_id), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
                 cv2.waitKey(25)
@@ -267,27 +262,45 @@ class I3DFusionSequence(Sequence):
             xframes[fn, :, :, :] = rgb
 
         cap.release()
-        # Crop to 112x112
-        # reshape_frames = xframes[:, 8:120, 30:142, :]
-
-        # # Resize to 112x112
-        # reshape_frames = numpy.zeros(shape=(self.num_frames, 112, 112, 3))
-        # for i in range(xframes.shape[0]):
-        #     reshape_frames[i, :, :, :] = cv2.resize(xframes[i, :, :, :], (112, 112))
+        del cap
+        del prev_gray
 
         y = numpy.zeros(shape=(1, 2))
         y[0][cls_id] = 1.
         return xframes, xflow, y
 
-    def __len__(self):
-        return int(numpy.ceil(len(self.all_seq) / self.batch_size))
-
 
 if __name__ == '__main__':
+    # all_samples = load_dataset_sequences("/Volumes/bstorage/datasets/vg_smoke/", "train.txt")
+    # 
+    # print("Sample (cls_id, video_fn, start_frame, end_frame)", all_samples[0])
+    # print("Total samples: %d" % len(all_samples))
+    # 
+    # pos = filter(lambda x: x[0] == 1.0, all_samples)
+    # neg = filter(lambda x: x[0] == 0, all_samples)
+    # print("Positives seq: %d" % len(list(pos)))
+    # print("Neg seq: %d" % len(list(neg)))
+    # 
+    # good_samples = filter(lambda x: x[3] - x[2] > 32, all_samples)
+    # print("Good samples: %d" % len(list(good_samples)))
+    # 
+    # h = sorted(map(lambda x: x[3] - x[2], all_samples))
+    # mean = numpy.mean(h)
+    # std = numpy.std(h)
+    # print("mean: ", mean)
+    # print(" std: ", std)
+    # print(" max: ", numpy.max(h))
+    # print(" min: ", numpy.min(h))
+    # fit = norm.pdf(h, mean, std)
+    # 
+    # pyplot.plot(h, fit, '-o')
+    # pyplot.hist(h, normed=1)
+    # pyplot.show()
+
     seq = I3DFusionSequence("/Volumes/bstorage/datasets/vg_smoke/", "train.txt",
                             input_hw=(224, 224), batch_size=32, num_frames_in_sequence=32,
                             show=True)
-    print(len(seq))
+    print("total batches with samples", len(seq))
     # val = C3DSequence("/Volumes/bstorage/datasets/vg_smoke/", "validate.txt")
 
     for i in range(len(seq)):
