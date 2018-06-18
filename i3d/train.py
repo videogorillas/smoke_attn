@@ -5,13 +5,13 @@ from keras import Model, Input
 from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.layers import Dense, concatenate, Flatten, Dropout
 from keras.losses import binary_crossentropy
-from keras.optimizers import SGD
+from keras.optimizers import SGD, Adam
 
 from i3d_dataset import I3DFusionSequence
 from i3d_inception import Inception_Inflated3d
 
 if __name__ == '__main__':
-    NUM_FRAMES = 32
+    NUM_FRAMES = 64
     FRAME_HEIGHT = 224
     FRAME_WIDTH = 224
     NUM_RGB_CHANNELS = 3
@@ -65,14 +65,14 @@ if __name__ == '__main__':
     model = Model(inputs=[rgb_input, flow_input], outputs=y)
 
     # plot_model(model)
-    model.compile(SGD(lr=1e-4), binary_crossentropy, metrics=["accuracy", ])
+    model.compile(Adam(lr=1e-4), binary_crossentropy, metrics=["accuracy", ])
     model.summary()
 
     data_dir = "/blender/storage/datasets/vg_smoke/"
-    train_seq = I3DFusionSequence(data_dir, "train.txt", batch_size=16, num_frames_in_sequence=NUM_FRAMES)
-    val_seq = I3DFusionSequence(data_dir, "validate.txt", batch_size=16, num_frames_in_sequence=NUM_FRAMES)
+    train_seq = I3DFusionSequence(data_dir, "train.txt", batch_size=12, num_frames_in_sequence=NUM_FRAMES)
+    val_seq = I3DFusionSequence(data_dir, "validate.txt", batch_size=12, num_frames_in_sequence=NUM_FRAMES)
 
-    hdf = "i3d_kinetics_finetune_v1.6.1.hdf"
+    hdf = "i3d_kinetics_finetune_v1.6.2.hdf"
 
     assert subprocess.call("git tag %s" % hdf, shell=True) == 0, "rename the experiment"
 
