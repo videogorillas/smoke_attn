@@ -5,7 +5,7 @@ from keras import Model, Input
 from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.layers import Dense, concatenate, Flatten, Dropout
 from keras.losses import binary_crossentropy
-from keras.optimizers import SGD, Adam
+from keras.optimizers import Adam
 
 from i3d_dataset import I3DFusionSequence
 from i3d_inception import Inception_Inflated3d
@@ -21,8 +21,8 @@ if __name__ == '__main__':
     rgb_input = Input(shape=(NUM_FRAMES, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS))
     rgb_model = Inception_Inflated3d(
         include_top=False,
-        # weights='rgb_imagenet_and_kinetics',
-        weights='rgb_kinetics_only',
+        weights='rgb_imagenet_and_kinetics',
+        # weights='rgb_kinetics_only',
         input_tensor=rgb_input,
         classes=NUM_CLASSES)
 
@@ -30,8 +30,8 @@ if __name__ == '__main__':
         # if i >= 181:
         #     break
 
-        if "Mixed_5b" == l.name:
-            break
+        # if "Mixed_5b" == l.name:
+        #     break
 
         l.trainable = False
 
@@ -40,8 +40,8 @@ if __name__ == '__main__':
     flow_input = Input(shape=(NUM_FRAMES, FRAME_HEIGHT, FRAME_WIDTH, NUM_FLOW_CHANNELS))
     flow_model = Inception_Inflated3d(
         include_top=False,
-        # weights='flow_imagenet_and_kinetics',
-        weights='flow_kinetics_only',
+        weights='flow_imagenet_and_kinetics',
+        # weights='flow_kinetics_only',
         input_tensor=flow_input,
         classes=NUM_CLASSES)
 
@@ -69,12 +69,12 @@ if __name__ == '__main__':
     model.summary()
 
     data_dir = "/blender/storage/datasets/vg_smoke/"
-    train_seq = I3DFusionSequence(data_dir, "train.txt", batch_size=16, num_frames_in_sequence=NUM_FRAMES)
-    val_seq = I3DFusionSequence(data_dir, "validate.txt", batch_size=16, num_frames_in_sequence=NUM_FRAMES)
+    train_seq = I3DFusionSequence(data_dir, "train.txt", batch_size=12, num_frames_in_sequence=NUM_FRAMES)
+    val_seq = I3DFusionSequence(data_dir, "validate.txt", batch_size=12, num_frames_in_sequence=NUM_FRAMES)
 
-    hdf = "i3d_kinetics_finetune_v1.6.1.hdf"
+    hdf = "i3d_kinetics_finetune_v1.7.1.hdf"
 
-    assert subprocess.call("git tag %s" % hdf, shell=True) == 0, "rename the experiment"
+    assert subprocess.call("git tag %s" % hdf, shell=True) == 0, "rename the experiment or delete git tag"
 
     log_dir = os.path.join("./logs", os.path.basename(hdf))
     model.fit_generator(train_seq, len(train_seq), epochs=10,
