@@ -8,9 +8,9 @@ from random import shuffle
 import cv2
 import numpy
 from keras.utils import Sequence, get_file
-from numpy import argmax
 
 import augmentation
+from i3d_dataset import jsonl_to_sequences, I3DFusionSequence
 from sports1M_utils import C3D_MEAN_PATH
 
 
@@ -19,7 +19,7 @@ class C3DSequence(Sequence):
     def __init__(self, data_dir, train_txt: str, batch_size: int = 32, show=False):
         self.batch_size = batch_size
         self.data_dir = data_dir
-        self.all_seq = []
+        self.dataset_sequences = []
         self.show = show
         self.image_augmentation = augmentation.ImageAugmentation()
 
@@ -43,27 +43,16 @@ class C3DSequence(Sequence):
 
                 with open(human_y) as f:
                     predictions_by_frame = [json.loads(s.strip()) for s in f]
+                    jsonl_to_sequences(predictions_by_frame)
+                    for _seq in jsonl_to_sequences(predictions_by_frame):
+                        cls_id, fnumbers = _seq
 
-                    p_prev = None
-                    cls_seq = []
-                    for fn_p in predictions_by_frame:
-                        fn, p = fn_p
-                        cls_id = argmax(p)
-                        if p_prev is None:
-                            p_prev = p
+                        _start_fn = fnumbers[0]
+                        _end_fn = fnumbers[-1]
+                        if _end_fn > _start_fn:
+                            self.dataset_sequences.append((cls_id, video_fn, _start_fn, _end_fn))
 
-                        if p_prev[0] == p[0]:
-                            cls_seq.append(fn_p)
-                        else:
-                            cls_seq = []
-
-                        if len(cls_seq) == 16:
-                            self.all_seq.append((cls_id, video_fn, cls_seq))
-
-                            cls_seq = []
-                        p_prev = p
-
-        shuffle(self.all_seq)
+        shuffle(self.dataset_sequences)
 
     def __getitem__(self, index):
 
@@ -130,8 +119,13 @@ class C3DSequence(Sequence):
 
 
 if __name__ == '__main__':
-    seq = C3DSequence("/Volumes/bstorage/datasets/vg_smoke/", "train.txt", batch_size=32, show=True)
-    # val = C3DSequence("/Volumes/bstorage/datasets/vg_smoke/", "validate.txt")
+    NUM_FRAMES = 16
+    data_dir = "/blender/storage/datasets/vg_smoke/"
+    seq = I3DFusionSequence(data_dir, "train.txt",
+                            input_hw=(112, 112),
+                            batch_size=12, num_frames_in_sequence=NUM_FRAMES,
+                            show=True,
+                            only_temporal=False, only_spacial=True)
 
     for i in range(len(seq)):
         print(seq[i])

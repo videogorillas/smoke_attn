@@ -189,7 +189,10 @@ def load_kinetics600_positives(data_dir, dataset_sequences):
 class I3DFusionSequence(Sequence):
 
     def __init__(self, data_dir, train_txt: str, batch_size: int = 32, input_hw=(224, 224), show=False,
-                 num_frames_in_sequence: int = 16):
+                 num_frames_in_sequence: int = 16, only_temporal=False, only_spacial=False):
+        self.only_spacial = only_spacial
+        self.only_temporal = only_temporal
+
         self.input_hw = input_hw
         self.num_frames = num_frames_in_sequence
         self.batch_size = batch_size
@@ -234,14 +237,19 @@ class I3DFusionSequence(Sequence):
 
         for ii in range(s, e):
             i = ii - s
-            xrgb, xflow, y = self.get_one_xy(ii)
+            xrgb, xflow, y = self.get_one_xy(ii, no_oflow=self.only_spacial)
             xrgb_batch[i, :, :, :, :] = xrgb
             xflow_batch[i, :, :, :, :] = xflow
             ybatch[i, :] = y
 
-        return [xrgb_batch, xflow_batch], ybatch
+        if self.only_spacial:
+            return xrgb_batch, ybatch
+        elif self.only_temporal:
+            return xflow_batch, ybatch
+        else:
+            return [xrgb_batch, xflow_batch], ybatch
 
-    def get_one_xy(self, index):
+    def get_one_xy(self, index, no_oflow=False):
         if self.image_augmentation:
             self.image_augmentation.renew()  # change random sequence for imgaug
 
@@ -285,7 +293,10 @@ class I3DFusionSequence(Sequence):
                 rgb = self.image_augmentation.blur.augment_images([rgb])[0]
                 rgb = self.image_augmentation.transform.augment_images([rgb])[0]
 
-            cur_flow = calc_flow(gray, prev_gray)
+            if no_oflow:
+                cur_flow = numpy.zeros(shape=(self.input_hw[0], self.input_hw[1], 2))
+            else:
+                cur_flow = calc_flow(gray, prev_gray)
             xflow[fn, :, :, :] = cur_flow
             prev_gray = gray
 
