@@ -82,6 +82,8 @@ if __name__ == '__main__':
     input_c3d = Input((NUM_FRAMES, 112, 112, 3))
     fe = C3D_fe(input_c3d, weights='sports1M')
     for l in fe.layers:
+        if "conv5a" == l.name:
+            break
         l.trainable = False
 
     classifier = Flatten()(fe.get_output_at(0))
@@ -93,6 +95,7 @@ if __name__ == '__main__':
     classifier = Dropout(0.5)(classifier)
     classifier = Conv2D(32, 1, padding="same", activation="relu", name="conv2d_cls2")(classifier)
 
+    classifier = Flatten()(classifier)
     classifier = Dropout(0.5)(classifier)
     classifier = Dense(2, activation='softmax', name='fc9')(classifier)
 
@@ -106,11 +109,11 @@ if __name__ == '__main__':
     train_seq = I3DFusionSequence(data_dir, "train.txt",
                                   input_hw=(112, 112),
                                   batch_size=12, num_frames_in_sequence=NUM_FRAMES,
-                                  only_temporal=False, only_spacial=True)
+                                  only_spacial=True)
     val_seq = I3DFusionSequence(data_dir, "validate.txt",
                                 input_hw=(112, 112),
                                 batch_size=12, num_frames_in_sequence=NUM_FRAMES,
-                                only_temporal=False, only_spacial=True)
+                                only_spacial=True)
 
     hdf = "c3d_v2.hdf"
     assert subprocess.call("git tag %s" % hdf, shell=True) == 0, "rename the experiment or delete git tag"

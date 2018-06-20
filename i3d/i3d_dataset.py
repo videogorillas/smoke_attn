@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #
 import csv
+import functools
 import itertools
 import json
 import os
@@ -97,8 +98,10 @@ def load_dataset_sequences(data_dir, train_txt):
     if train_txt == "train.txt":
         print("Loading activity_net subset", train_txt)
         load_activity_net_seq(data_dir, dataset_sequences)
+
         print("Loading kinetics600 subset", train_txt)
-        load_kinetics600_positives(data_dir, dataset_sequences)
+        load_kinetics600("/blender/storage/datasets/kinetics-600/",
+                         data_dir + '/k600.csv', dataset_sequences)
 
     with open(os.path.join(data_dir, train_txt), 'r') as video_fn:
         train_files = list(map(lambda l: l.strip(), video_fn.readlines()))
@@ -154,16 +157,16 @@ def load_activity_net_seq(data_dir, dataset_sequences):
                 dataset_sequences.append((1, video_fn, _start_fn, _end_fn))
 
 
-def load_kinetics600_positives(data_dir, dataset_sequences):
-    with open(data_dir + '/k600.csv') as _f:
-        rdr = csv.reader(_f)
-
+def load_kinetics600(data_dir, csv_filepath, dataset_sequences):
+    with open(csv_filepath) as _f:
+        csvrdr = csv.reader(_f)
         cap = cv2.VideoCapture()
-        for row in rdr:
-            # smoking,EYJlJZuSypI,1,11,train
-            _, id, start_sec, end_sec, _ = row
 
-            video_fn = "k600/%s.mp4" % id
+        for row in csvrdr:
+            # smoking,EYJlJZuSypI,1,11,train
+            class_name, id, start_sec, end_sec, train_test = row
+
+            video_fn = os.path.join(data_dir, train_test, "%s.mp4" % id)
             # cap = cv2.VideoCapture(data_dir + "/" + video_fn)
             cap.open(data_dir + "/" + video_fn)
 
@@ -173,7 +176,7 @@ def load_kinetics600_positives(data_dir, dataset_sequences):
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
             if h > w:
-                print("Verical video? %s. skipping" % video_fn)
+                print("Vertical video? %s. skipping" % video_fn)
                 cap.release()
                 continue
 
@@ -183,7 +186,11 @@ def load_kinetics600_positives(data_dir, dataset_sequences):
             _end_fn = int(fps * float(end_sec))
             # print(id, _start_fn, _end_fn)
             if _end_fn > _start_fn:
-                dataset_sequences.append((1, video_fn, _start_fn, _end_fn))
+                if "smoking" == class_name:
+                    dataset_sequences.append((1, video_fn, _start_fn, _end_fn))
+                else:
+                    dataset_sequences.append((0, video_fn, _start_fn, _end_fn))
+        del cap
 
 
 class I3DFusionSequence(Sequence):
@@ -221,8 +228,12 @@ class I3DFusionSequence(Sequence):
         pos = list(filter(lambda _x: _x[0] == 1, self.dataset_seq))
         neg = list(filter(lambda _x: _x[0] == 0, self.dataset_seq))
         print("Samples with %d frames or more: %d" % (num_frames_in_sequence, len(self.dataset_seq)))
-        print("Pos Samples: %d" % len(pos))
-        print("Neg Samples: %d" % len(neg))
+        print("Pos Samples: %d; frames: %d" % (len(pos),
+                                               functools.reduce(lambda y, x: y + (x[3] - x[2]),
+                                                                pos, 0)))
+        print("Neg Samples: %d; frames %05d" % (len(neg),
+                                                functools.reduce(lambda y, x: y + (x[3] - x[2]),
+                                                                 neg, 0)))
 
     def __len__(self):
         return int(numpy.ceil(len(self.dataset_seq) / self.batch_size))
