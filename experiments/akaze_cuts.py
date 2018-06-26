@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 
-def yield_3squares_from_frame_cv(input_video_url: str):
+def yield_frames(input_video_url: str, input_height: int):
     try:
         cap = cv2.VideoCapture(input_video_url)
 
@@ -16,7 +16,15 @@ def yield_3squares_from_frame_cv(input_video_url: str):
             ret, frame = cap.read()
             if not ret:
                 break
-            yield (fn, frame)
+
+            h, w, c = frame.shape
+            x = h / input_height
+            new_w = int(w / x)
+
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            img_hwc = cv2.resize(rgb, (new_w, input_height))
+
+            yield (fn, img_hwc)
 
             # 
             # h, w, c = frame.shape
@@ -38,47 +46,10 @@ def yield_3squares_from_frame_cv(input_video_url: str):
         cap.release()
 
 
-# mouse callback function
-drawing = False  # true if mouse is pressed
-mode = True  # if True, draw rectangle. Press 'm' to toggle to curve
-ix, iy = -1, -1
-ex, ey = -1, -1
-img = None
-
-
-def draw_circle(event, x, y, flags, param):
-    global ix, iy, drawing, mode
-    global ex, ey
-
-    if event == cv2.EVENT_LBUTTONDOWN:
-        drawing = True
-        ix, iy = x, y
-
-    elif event == cv2.EVENT_MOUSEMOVE:
-        if drawing:
-            if mode:
-                # cv2.rectangle(img, (ix, iy), (x, y), (0, 255, 0), 1)
-                pass
-            else:
-                cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
-
-    elif event == cv2.EVENT_LBUTTONUP:
-        drawing = False
-        if mode:
-            cv2.rectangle(img, (ix, iy), (x, y), (0, 255, 0), 1)
-            ex = x
-            ey = y
-        else:
-            cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
-        cv2.imshow('cur', img)
-
-
 if __name__ == '__main__':
     # input_video_url = "/Users/chexov/testvideo/smoke_scene_in_the_movies.mp4"
     input_video_url = "/Users/chexov/testvideo/Lisa_Smoke_scene_Jolie.mp4"
-
-    cv2.namedWindow('cur')
-    cv2.setMouseCallback('cur', draw_circle)
+    # input_video_url = "/Volumes/SD128/macg/BX137_SRNA_02.mov"
 
     homography = [
         [7.6285898e-01, -2.9922929e-01, 2.2567123e+02],
@@ -108,7 +79,7 @@ if __name__ == '__main__':
 
     good_features_buffer = []
 
-    for fn, bgr in yield_3squares_from_frame_cv(input_video_url):
+    for fn, bgr in yield_frames(input_video_url, input_height=299):
         print("fn", fn)
         gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
         if fn == 0:
@@ -137,7 +108,7 @@ if __name__ == '__main__':
         print("good=", len(good))
         good_features_buffer.append(good)
 
-        if (len(good_features_buffer) > 5):
+        if len(good_features_buffer) > 5:
             _prev2, _prev1, _cur, _next1, _next2 = good_features_buffer[-5:]
             prev2, prev1, cur, next1, next2 = len(_prev2), len(_prev1), len(_cur), len(_next1), len(_next2)
             sd = cur * 2 - (prev1 + prev2) / 2 - (next1 + next2) / 2
@@ -149,21 +120,14 @@ if __name__ == '__main__':
                 print("CUT SD")
                 cv2.waitKey(0)
 
-        # if len(good) < 42:
-        print(fn % 25)
-        if len(good) < 42:
-            print("CUT")
-            # cv2.waitKey(0)
-
-        if fn % 25 == 0 or len(good) < 42:
-            cut_gray = gray
-            kpts0, desc0 = akaze.detectAndCompute(gray, None)
-            continue
+        # if fn % 25 == 0:
+        cut_gray = gray
+        kpts0, desc0 = akaze.detectAndCompute(gray, None)
 
         im3 = cv2.drawMatchesKnn(cut_gray, kpts0, gray, kpts2, good[:42], None,
                                  matchColor=None, matchesMask=None,
                                  flags=2)
         prev_gray = gray
-        cv2.imshow("frame", im3)
+        cv2.imshow("frame", bgr)
         if cv2.waitKey(25) & 0xFF == 27:
             sys.exit(1)
