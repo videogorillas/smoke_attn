@@ -10,7 +10,7 @@ from sklearn.decomposition import PCA
 
 def project(_x):
     global embedding
-    emb = "umap"
+    emb = "pca3"
     if emb == "pca3":
         pca = PCA(n_components=3)
         embedding = pca.fit_transform(_x)
@@ -62,17 +62,25 @@ def plot_emb(_embedding, ax):
 if __name__ == '__main__':
     # _x = numpy.load("/Volumes/bstorage/home/chexov/smoke_attn/i3d/BX137_SRNA_01.npy")
     fig = pyplot.figure()
+    _x1 = numpy.load("/Volumes/SD128/emb/MACG_S02_Ep024_ING_5764188.mov.npy")
     ax = Axes3D(fig)
 
-    _x = numpy.load("/Volumes/bstorage/home/chexov/macg_embedding/BX137_SRNA_01.mov.npy")
-    embedding = project(_x)
-    plot_emb(embedding, ax)
-    emb_to_tsv(embedding, "/tmp/umap_BX137_SRNA_01.mov.tsv")
+    # _x1 = numpy.load("/Volumes/bstorage/home/chexov/macg_embedding/MACG_S02_Ep024_ING_5764188.mov.npy")
+    _x1 = numpy.load("/Volumes/SD128/emb/MACG_S02_Ep024_ING_5764188.mov.npy")
+    # _x2 = numpy.load("/Volumes/bstorage/home/chexov/macg_embedding/BX137_SRNA_03.mov.npy")
+    # x1x2 = numpy.concatenate([_x1, _x2])
+    # embedding = project(x1x2)
+    # embedding_x1 = embedding[0:len(_x1) - 1]
+    # embedding_x2 = embedding[len(_x1):]
+    # ax.scatter(embedding_x1[:, 0], embedding_x1[:, 1], embedding_x1[:, 2], alpha=0.8, cmap="Accent")
+    # ax.scatter(embedding_x2[:, 0], embedding_x2[:, 1], embedding_x2[:, 2], alpha=0.8, cmap="Accent")
 
-    _x = numpy.load("/Volumes/bstorage/home/chexov/macg_embedding/BX137_SRNA_03.mov.npy")
-    embedding = project(_x)
+    embedding = project(_x1[:5000])
     plot_emb(embedding, ax)
-    emb_to_tsv(embedding, "/tmp/umap_BX137_SRNA_03.mov.tsv")
+    emb_to_tsv(embedding, "/tmp/x1.tsv")
+
+    # plot_emb(embedding, ax)
+    # emb_to_tsv(embedding, "/tmp/umap_x1x2.tsv")
 
     # kmeans = KMeans(n_clusters=4, random_state=0).fit(embedding)
     # print(kmeans.labels_)

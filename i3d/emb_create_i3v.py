@@ -4,13 +4,13 @@ Evaluates a RGB and Flow sample similar to the paper's github repo: 'https://git
 '''
 
 import argparse
+import os
 from itertools import count
 
 import cv2
 import numpy
 from keras import Input, Model
 from keras.applications import InceptionV3
-from keras.utils import plot_model
 
 NUM_FRAMES = 32
 FRAME_HEIGHT = 224
@@ -40,7 +40,7 @@ def main_fe(model, video_f, show=False):
 
         x = numpy.stack([rgb, ])
         for y_vec in model.predict(x):
-            yield y_vec
+            yield fn, y_vec
     cap.release()
     del cap
 
@@ -54,13 +54,13 @@ if __name__ == '__main__':
 
     rgb_input = Input(shape=(299, 299, 3))
     fe = InceptionV3(include_top=False, weights="imagenet", input_tensor=rgb_input)
-    plot_model(fe, show_shapes=True)
+    # plot_model(fe, show_shapes=True)
 
     m = Model(input=fe.get_input_at(0), output=(fe.get_layer("mixed9").output))
 
-    vecs = []
-    for vec in main_fe(m, args.video_file, show=False):
-        print(vec.sum())
-        vecs.append(vec.flatten())
+    os.makedirs(args.outvecs, exist_ok=True)
 
-    # numpy.save(args.outvecs, numpy.array(vecs))
+    for fn, vec in main_fe(m, args.video_file, show=False):
+        print(fn)
+        t = vec.flatten()
+        numpy.save("%s/%09d.npy" % (args.outvecs, fn), t)

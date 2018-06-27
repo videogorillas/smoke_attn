@@ -4,6 +4,7 @@ Evaluates a RGB and Flow sample similar to the paper's github repo: 'https://git
 '''
 
 import argparse
+import os
 from itertools import count
 
 import cv2
@@ -22,52 +23,53 @@ NUM_FLOW_CHANNELS = 2
 NUM_CLASSES = 400
 
 
-def main_fe(model, video_f, show=False):
+def main_fe(model, video_f, show=False, startfn: int = -1, endfn: int = -1):
     inputs = []
 
     cap = cv2.VideoCapture(video_f)
-    prev = None
-    fn_counter = count()
+    if startfn > -1:
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        cap.set(cv2.CAP_PROP_POS_MSEC, fps * startfn)
+    else:
+        startfn = 0
+
+    fn_counter = count(startfn)
     while cap.isOpened():
         ret, bgr = cap.read()
-        fn = next(fn_counter)
-
         if bgr is None:
             break
 
+        fn = next(fn_counter)
+        if endfn > 0 and fn > endfn:
+            break
+
+        print("fn=", fn)
         h, w, c = bgr.shape
         ratio = w / h
         w_resized = int(224 * ratio)
         resized = cv2.resize(bgr, (w_resized, 224))
-        # cv2.imshow("resized", resized)
-        # cv2.waitKey(0)
-
         rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
 
         w1 = int((w_resized / 2) - 224 / 2)
         rgb = rgb[0:224, w1:w1 + 224, :]
 
-        gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
-        if prev is None:
-            prev = gray
-
-        # curr_flow = calc_flow(gray, prev)
-        # flow.append(curr_flow)
-        prev = gray
         if show:
             cv2.imshow("cropped", cv2.cvtColor(rgb.astype(np.uint8), cv2.COLOR_RGB2BGR))
 
         rgb = rgb / 127.5 - 1
         inputs.append(rgb)
 
-        if fn + 1 < NUM_FRAMES:
+        if len(inputs) < NUM_FRAMES:
             continue
 
         x_rgb = np.array([inputs])
         y_vec = model.predict(x_rgb)
-        yield y_vec
+        yield fn, y_vec
 
         inputs = inputs[1:]
+
+    cap.release()
+    del cap
 
 
 if __name__ == '__main__':
@@ -75,6 +77,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('video_file', type=str, help="path to the video file")
     parser.add_argument('outvecs', type=str, help="path to the opeput numpy vector")
+    parser.add_argument('--startframe', type=int, default=-1, help="start frame")
+    parser.add_argument('--endframe', type=int, default=-1, help="end frame")
     args = parser.parse_args()
 
     rgb_input = Input(shape=(NUM_FRAMES, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS))
@@ -88,9 +92,9 @@ if __name__ == '__main__':
     m = Model(input=fe.get_input_at(0), output=(fe.get_layer("Mixed_5c").output))
     # plot_model(m, show_shapes=True)
 
-    vecs = []
-    for vec in main_fe(m, args.video_file, show=False):
-        print(vec.sum())
-        vecs.append(vec.flatten())
+    os.makedirs(args.outvecs, exist_ok=True)
 
-    numpy.save(args.outvecs, numpy.array(vecs))
+    for fn, vec in main_fe(m, args.video_file, show=False, startfn=args.startframe, endfn=args.endframe):
+        print(fn)
+        t = vec.flatten()
+        numpy.save("%s/%09d.npy" % (args.outvecs, fn), t)
