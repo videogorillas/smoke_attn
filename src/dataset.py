@@ -40,8 +40,8 @@ class BatchSeq(Sequence):
 
 
 def calc_flow(gray, prev):
-    curr_flow = cv2.calcOpticalFlowFarneback(prev, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-    # curr_flow = TVL1.calc(prev, gray, None)
+    # curr_flow = cv2.calcOpticalFlowFarneback(prev, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+    curr_flow = TVL1.calc(prev, gray, None)
 
     # curr_flow = cv2.cartToPolar(flow[..., 0], flow[..., 1])
     curr_flow[curr_flow >= 20] = 20

@@ -48,8 +48,9 @@ def yield_frames(input_video_url: str, input_height: int):
 
 if __name__ == '__main__':
     # input_video_url = "/Users/chexov/testvideo/smoke_scene_in_the_movies.mp4"
-    input_video_url = "/Users/chexov/testvideo/Lisa_Smoke_scene_Jolie.mp4"
+    # input_video_url = "/Users/chexov/testvideo/Lisa_Smoke_scene_Jolie.mp4"
     # input_video_url = "/Volumes/SD128/macg/BX137_SRNA_02.mov"
+    input_video_url = "/blender/storage/home/chexov/macg/MACG_S02_Ep024_ING_5764188.mov"
 
     homography = [
         [7.6285898e-01, -2.9922929e-01, 2.2567123e+02],
@@ -79,9 +80,9 @@ if __name__ == '__main__':
 
     good_features_buffer = []
 
-    for fn, bgr in yield_frames(input_video_url, input_height=299):
+    for fn, rgb in yield_frames(input_video_url, input_height=299):
         print("fn", fn)
-        gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(rgb, cv2.COLOR_BGR2GRAY)
         if fn == 0:
             prev_gray = gray
 
@@ -98,6 +99,8 @@ if __name__ == '__main__':
 
         # nn_matches = matcher.knnMatch(desc1, desc2, k=2)
         nn_matches = matcher.knnMatch(desc0, desc2, k=2)
+        if nn_matches is None:
+            nn_matches = []
 
         good = []
         for m, n in nn_matches:
@@ -128,6 +131,7 @@ if __name__ == '__main__':
                                  matchColor=None, matchesMask=None,
                                  flags=2)
         prev_gray = gray
-        cv2.imshow("frame", bgr)
+        cv2.imshow("frame", cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+        cv2.imshow("matches", im3)
         if cv2.waitKey(25) & 0xFF == 27:
             sys.exit(1)

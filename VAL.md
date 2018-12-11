@@ -75,3 +75,5 @@ precision: 0.665658, recall:0.573165
 #i3d_kinetics_finetune_v1.7.1.hdf
 - new weights='flow_imagenet_and_kinetics'
 - train only classifier not FE
+
+#"i3d_kinetics_finetune_v1.8.hdf"

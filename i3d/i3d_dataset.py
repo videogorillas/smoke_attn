@@ -277,13 +277,17 @@ class I3DFusionSequence(Sequence):
         video_path = os.path.join(self.data_dir, v_file)
         cap = cv2.VideoCapture(video_path)
         cap.set(cv2.CAP_PROP_POS_FRAMES, rand_start_frame)
+        h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+
         fn_counter = itertools.count()
         xframes = numpy.zeros(shape=(self.num_frames, self.input_hw[0], self.input_hw[1], 3))
         xflow = numpy.zeros(shape=(self.num_frames, self.input_hw[0], self.input_hw[1], 2))
 
         prev_gray = None
-        x = randint(0, 32)  # jitter crop for the sequence
-        y = randint(0, 32)  # jitter crop for the sequence
+
+        x = randint(0, 64)  # jitter crop for the sequence
+        y = randint(0, 64)  # jitter crop for the sequence
         while cap.isOpened():
             ret, bgr = cap.read()
 
@@ -312,8 +316,16 @@ class I3DFusionSequence(Sequence):
             prev_gray = gray
 
             if self.show:
-                # cv2.imshow("%d f%d" % (fn + start_frame, cls_id), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
-                cv2.imshow("clsid%d" % (cls_id), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+                cv2.imshow("spacial clsid%d" % (cls_id), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+
+                if not no_oflow:
+                    hsv = numpy.zeros_like(rgb, dtype=numpy.uint8)
+                    mag, ang = cv2.cartToPolar(cur_flow[..., 0], cur_flow[..., 1])
+                    hsv[..., 0] = ang * 180 / numpy.pi / 2
+                    hsv[:, :, 1] = 255
+                    hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+                    cv2.imshow("temporal clsid%d" % (cls_id), cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR))
+
                 cv2.waitKey(25)
 
             rgb = rgb / 127.5 - 1
@@ -357,6 +369,7 @@ if __name__ == '__main__':
 
     seq = I3DFusionSequence("/Volumes/bstorage/datasets/vg_smoke/", "train.txt",
                             input_hw=(224, 224), batch_size=32, num_frames_in_sequence=32,
+                            only_temporal=True,
                             show=True)
     print("total batches with samples", len(seq))
     # val = C3DSequence("/Volumes/bstorage/datasets/vg_smoke/", "validate.txt")

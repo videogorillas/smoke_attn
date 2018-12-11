@@ -56,7 +56,8 @@ if __name__ == '__main__':
     fe = InceptionV3(include_top=False, weights="imagenet", input_tensor=rgb_input)
     # plot_model(fe, show_shapes=True)
 
-    m = Model(input=fe.get_input_at(0), output=(fe.get_layer("mixed9").output))
+    # m = Model(input=fe.get_input_at(0), output=(fe.get_layer("mixed9").output))
+    m = fe
 
     os.makedirs(args.outvecs, exist_ok=True)
 

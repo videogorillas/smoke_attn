@@ -72,7 +72,7 @@ if __name__ == '__main__':
     train_seq = I3DFusionSequence(data_dir, "train.txt", batch_size=12, num_frames_in_sequence=NUM_FRAMES)
     val_seq = I3DFusionSequence(data_dir, "validate.txt", batch_size=12, num_frames_in_sequence=NUM_FRAMES)
 
-    hdf = "i3d_kinetics_finetune_v1.7.1.hdf"
+    hdf = "i3d_kinetics_finetune_v1.8.hdf"
 
     assert subprocess.call("git tag %s" % hdf, shell=True) == 0, "rename the experiment or delete git tag"
 
